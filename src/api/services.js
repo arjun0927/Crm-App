@@ -1,0 +1,480 @@
+/**
+ * API Service
+ * Provides methods for making API calls
+ */
+
+import apiClient, { getErrorMessage, isNetworkError, isAuthError } from './interceptor';
+import { API_ENDPOINTS } from './config';
+
+/**
+ * Generic API request handler
+ * Wraps API calls with consistent error handling
+ */
+const handleRequest = async (request) => {
+    try {
+        const response = await request;
+        return {
+            success: true,
+            data: response.data,
+            status: response.status,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: getErrorMessage(error),
+            status: error.response?.status,
+            isNetworkError: isNetworkError(error),
+            isAuthError: isAuthError(error),
+        };
+    }
+};
+
+// ============================================
+// AUTH APIs
+// ============================================
+
+export const authAPI = {
+    /**
+     * Login user
+     * @param {string} email - User email
+     * @param {string} password - User password
+     */
+    login: (email, password) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.AUTH.LOGIN, { email, password })
+        );
+    },
+
+    /**
+     * Register new user
+     * @param {object} userData - User registration data
+     */
+    register: (userData) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.AUTH.REGISTER, userData)
+        );
+    },
+
+    /**
+     * Logout user
+     */
+    logout: () => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.AUTH.LOGOUT)
+        );
+    },
+
+    /**
+     * Get current user info
+     */
+    getMe: () => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.AUTH.ME)
+        );
+    },
+
+    /**
+     * Forgot password
+     * @param {string} email - User email
+     */
+    forgotPassword: (email) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email })
+        );
+    },
+
+    /**
+     * Reset password
+     * @param {object} data - Reset password data (token, password, confirmPassword)
+     */
+    resetPassword: (data) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, data)
+        );
+    },
+
+    /**
+     * Google Login/Register
+     * @param {object} data - Google auth data (idToken, email, name, googleId, photo)
+     */
+    googleLogin: (data) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.AUTH.GOOGLE_LOGIN, data)
+        );
+    },
+};
+
+// ============================================
+// USER APIs
+// ============================================
+
+export const userAPI = {
+    /**
+     * Get user profile
+     */
+    getProfile: () => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.USERS.PROFILE)
+        );
+    },
+
+    /**
+     * Update user profile
+     * @param {object} data - Profile data to update
+     */
+    updateProfile: (data) => {
+        return handleRequest(
+            apiClient.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, data)
+        );
+    },
+
+    /**
+     * Change password
+     * @param {object} data - { currentPassword, newPassword, confirmPassword }
+     */
+    changePassword: (data) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.USERS.CHANGE_PASSWORD, data)
+        );
+    },
+
+    /**
+     * Upload avatar
+     * @param {FormData} formData - Form data with image file
+     */
+    uploadAvatar: (formData) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.USERS.UPLOAD_AVATAR, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            })
+        );
+    },
+};
+
+// ============================================
+// LEADS APIs
+// ============================================
+
+export const leadsAPI = {
+    /**
+     * Get all leads
+     * @param {object} params - Query params (page, limit, status, search, etc.)
+     */
+    getAll: (params = {}) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.LEADS.LIST, { params })
+        );
+    },
+
+    /**
+     * Get lead by ID
+     * @param {string|number} id - Lead ID
+     */
+    getById: (id) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.LEADS.DETAIL(id))
+        );
+    },
+
+    /**
+     * Create new lead
+     * @param {object} data - Lead data
+     */
+    create: (data) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.LEADS.CREATE, data)
+        );
+    },
+
+    /**
+     * Update lead
+     * @param {string|number} id - Lead ID
+     * @param {object} data - Lead data to update
+     */
+    update: (id, data) => {
+        return handleRequest(
+            apiClient.put(API_ENDPOINTS.LEADS.UPDATE(id), data)
+        );
+    },
+
+    /**
+     * Delete lead
+     * @param {string|number} id - Lead ID
+     */
+    delete: (id) => {
+        return handleRequest(
+            apiClient.delete(API_ENDPOINTS.LEADS.DELETE(id))
+        );
+    },
+
+    /**
+     * Search leads
+     * @param {string} query - Search query
+     * @param {object} params - Additional params
+     */
+    search: (query, params = {}) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.LEADS.SEARCH, {
+                params: { q: query, ...params }
+            })
+        );
+    },
+
+    /**
+     * Get leads statistics
+     */
+    getStats: () => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.LEADS.STATS)
+        );
+    },
+};
+
+// ============================================
+// TASKS APIs
+// ============================================
+
+export const tasksAPI = {
+    /**
+     * Get all tasks
+     * @param {object} params - Query params (page, limit, status, priority, etc.)
+     */
+    getAll: (params = {}) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.TASKS.LIST, { params })
+        );
+    },
+
+    /**
+     * Get task by ID
+     * @param {string|number} id - Task ID
+     */
+    getById: (id) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.TASKS.DETAIL(id))
+        );
+    },
+
+    /**
+     * Create new task
+     * @param {object} data - Task data
+     */
+    create: (data) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.TASKS.CREATE, data)
+        );
+    },
+
+    /**
+     * Update task
+     * @param {string|number} id - Task ID
+     * @param {object} data - Task data to update
+     */
+    update: (id, data) => {
+        return handleRequest(
+            apiClient.put(API_ENDPOINTS.TASKS.UPDATE(id), data)
+        );
+    },
+
+    /**
+     * Delete task
+     * @param {string|number} id - Task ID
+     */
+    delete: (id) => {
+        return handleRequest(
+            apiClient.delete(API_ENDPOINTS.TASKS.DELETE(id))
+        );
+    },
+
+    /**
+     * Toggle task status (complete/incomplete)
+     * @param {string|number} id - Task ID
+     */
+    toggleStatus: (id) => {
+        return handleRequest(
+            apiClient.patch(API_ENDPOINTS.TASKS.TOGGLE_STATUS(id))
+        );
+    },
+
+    /**
+     * Get today's tasks
+     */
+    getToday: () => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.TASKS.TODAY)
+        );
+    },
+
+    /**
+     * Get overdue tasks
+     */
+    getOverdue: () => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.TASKS.OVERDUE)
+        );
+    },
+
+    /**
+     * Get tasks statistics
+     */
+    getStats: () => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.TASKS.STATS)
+        );
+    },
+};
+
+// ============================================
+// DASHBOARD APIs
+// ============================================
+
+export const dashboardAPI = {
+    /**
+     * Get dashboard stats
+     */
+    getStats: () => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.DASHBOARD.STATS)
+        );
+    },
+
+    /**
+     * Get recent leads
+     * @param {number} limit - Number of leads to fetch
+     */
+    getRecentLeads: (limit = 5) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.DASHBOARD.RECENT_LEADS, {
+                params: { limit }
+            })
+        );
+    },
+
+    /**
+     * Get recent tasks
+     * @param {number} limit - Number of tasks to fetch
+     */
+    getRecentTasks: (limit = 5) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.DASHBOARD.RECENT_TASKS, {
+                params: { limit }
+            })
+        );
+    },
+};
+
+// ============================================
+// NOTIFICATIONS APIs
+// ============================================
+
+export const notificationsAPI = {
+    /**
+     * Get all notifications
+     * @param {object} params - Query params (page, limit, unread, etc.)
+     */
+    getAll: (params = {}) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.NOTIFICATIONS.LIST, { params })
+        );
+    },
+
+    /**
+     * Mark notification as read
+     * @param {string|number} id - Notification ID
+     */
+    markAsRead: (id) => {
+        return handleRequest(
+            apiClient.patch(API_ENDPOINTS.NOTIFICATIONS.MARK_READ(id))
+        );
+    },
+
+    /**
+     * Mark all notifications as read
+     */
+    markAllAsRead: () => {
+        return handleRequest(
+            apiClient.patch(API_ENDPOINTS.NOTIFICATIONS.MARK_ALL_READ)
+        );
+    },
+
+    /**
+     * Delete notification
+     * @param {string|number} id - Notification ID
+     */
+    delete: (id) => {
+        return handleRequest(
+            apiClient.delete(API_ENDPOINTS.NOTIFICATIONS.DELETE(id))
+        );
+    },
+};
+
+// ============================================
+// COMPANIES APIs
+// ============================================
+
+export const companiesAPI = {
+    /**
+     * Get all companies
+     * @param {object} params - Query params (page, limit, etc.)
+     */
+    getAll: (params = {}) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.COMPANIES.LIST, { params })
+        );
+    },
+
+    /**
+     * Get company by ID
+     * @param {string|number} id - Company ID
+     */
+    getById: (id) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.COMPANIES.DETAIL(id))
+        );
+    },
+
+    /**
+     * Create new company
+     * @param {object} data - Company data
+     */
+    create: (data) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.COMPANIES.CREATE, data)
+        );
+    },
+
+    /**
+     * Update company
+     * @param {string|number} id - Company ID
+     * @param {object} data - Company data to update
+     */
+    update: (id, data) => {
+        return handleRequest(
+            apiClient.put(API_ENDPOINTS.COMPANIES.UPDATE(id), data)
+        );
+    },
+
+    /**
+     * Delete company
+     * @param {string|number} id - Company ID
+     */
+    delete: (id) => {
+        return handleRequest(
+            apiClient.delete(API_ENDPOINTS.COMPANIES.DELETE(id))
+        );
+    },
+};
+
+// Export all APIs
+export default {
+    auth: authAPI,
+    user: userAPI,
+    leads: leadsAPI,
+    tasks: tasksAPI,
+    dashboard: dashboardAPI,
+    notifications: notificationsAPI,
+    companies: companiesAPI,
+};
+

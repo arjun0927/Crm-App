@@ -1,0 +1,151 @@
+/**
+ * App Navigator
+ * Root navigation container with unified navigation structure
+ */
+
+import React, { useRef, useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ROUTES } from '../constants';
+import { setNavigationRef } from '../api';
+
+// Import screens
+import {
+    SplashScreen,
+    LoginScreen,
+    RegisterScreen,
+    LeadDetailsScreen,
+    TaskDetailsScreen,
+    AddLeadScreen,
+    AddTaskScreen,
+    ProfileScreen,
+    AddCompanyScreen,
+} from '../screens';
+// Import company screens
+import EditCompanyScreen from '../screens/main/EditCompanyScreen';
+
+// Import navigators
+import BottomTabNavigator from './BottomTabNavigator';
+
+const Stack = createNativeStackNavigator();
+
+// Navigation ref for use outside of React components
+export const navigationRef = React.createRef();
+
+/**
+ * Navigate from anywhere in the app
+ * @param {string} name - Route name
+ * @param {object} params - Route params
+ */
+export const navigate = (name, params) => {
+    navigationRef.current?.navigate(name, params);
+};
+
+/**
+ * Reset navigation stack
+ * @param {object} state - New navigation state
+ */
+export const resetNavigation = (state) => {
+    navigationRef.current?.reset(state);
+};
+
+const AppNavigator = () => {
+    useEffect(() => {
+        // Set navigation ref for API interceptor to use on auth errors
+        if (navigationRef.current) {
+            setNavigationRef(navigationRef.current);
+        }
+    }, []);
+
+    const onReady = () => {
+        // Set navigation ref for API interceptor when navigation is ready
+        setNavigationRef(navigationRef.current);
+    };
+
+    return (
+        <NavigationContainer ref={navigationRef} onReady={onReady}>
+            <Stack.Navigator
+                initialRouteName={ROUTES.SPLASH}
+                screenOptions={{
+                    headerShown: false,
+                    animation: 'slide_from_right',
+                    gestureEnabled: true,
+                }}
+            >
+                {/* Auth Screens */}
+                <Stack.Screen
+                    name={ROUTES.SPLASH}
+                    component={SplashScreen}
+                    options={{ animation: 'fade' }}
+                />
+                <Stack.Screen
+                    name={ROUTES.LOGIN}
+                    component={LoginScreen}
+                    options={{ animation: 'fade' }}
+                />
+                <Stack.Screen
+                    name={ROUTES.REGISTER}
+                    component={RegisterScreen}
+                />
+
+                {/* Main Tab Navigator */}
+                <Stack.Screen
+                    name={ROUTES.MAIN_TABS}
+                    component={BottomTabNavigator}
+                    options={{ animation: 'fade' }}
+                />
+
+                {/* Detail Screens */}
+                <Stack.Screen
+                    name={ROUTES.LEAD_DETAILS}
+                    component={LeadDetailsScreen}
+                />
+                <Stack.Screen
+                    name={ROUTES.TASK_DETAILS}
+                    component={TaskDetailsScreen}
+                />
+                <Stack.Screen
+                    name={ROUTES.ADD_LEAD}
+                    component={AddLeadScreen}
+                    options={{
+                        animation: 'slide_from_bottom',
+                        presentation: 'modal',
+                    }}
+                />
+                <Stack.Screen
+                    name={ROUTES.ADD_TASK}
+                    component={AddTaskScreen}
+                    options={{
+                        animation: 'slide_from_bottom',
+                        presentation: 'modal',
+                    }}
+                />
+
+                {/* Company Screens */}
+                <Stack.Screen
+                    name="EditCompany"
+                    component={EditCompanyScreen}
+                    options={{
+                        animation: 'slide_from_bottom',
+                        presentation: 'modal',
+                    }}
+                />
+                <Stack.Screen
+                    name={ROUTES.ADD_COMPANY}
+                    component={AddCompanyScreen}
+                    options={{
+                        // animation: 'slide_from_bottom',
+                        presentation: 'modal',
+                    }}
+                />
+                <Stack.Screen
+                    name={ROUTES.PROFILE}
+                    component={ProfileScreen}
+                />
+            </Stack.Navigator>
+        </NavigationContainer>
+    );
+};
+
+export default AppNavigator;
+

@@ -1,0 +1,8 @@
+/**
+ * Details Screens Index
+ */
+
+export { default as LeadDetailsScreen } from './LeadDetailsScreen';
+export { default as TaskDetailsScreen } from './TaskDetailsScreen';
+export { default as AddLeadScreen } from './AddLeadScreen';
+export { default as AddTaskScreen } from './AddTaskScreen';

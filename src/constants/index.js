@@ -1,0 +1,92 @@
+/**
+ * Constants Index - Export all constants from a single file
+ */
+
+export { Colors, default as ColorsDefault } from './Colors';
+export {
+    FontFamily,
+    FontSize,
+    FontWeight,
+    LineHeight,
+    LetterSpacing,
+    TextStyles,
+} from './Fonts';
+export { Spacing, BorderRadius, Shadow, ZIndex } from './Spacing';
+
+// App-wide constants
+export const APP_NAME = 'CRM Pro';
+export const APP_VERSION = '1.0.0';
+
+// API Constants (for future use)
+export const API_BASE_URL = 'https://api.example.com';
+export const API_TIMEOUT = 30000;
+
+// Storage Keys
+export const STORAGE_KEYS = {
+    AUTH_TOKEN: '@auth_token',
+    USER_DATA: '@user_data',
+    THEME: '@theme',
+    ONBOARDING_COMPLETED: '@onboarding_completed',
+    REMEMBER_ME: '@remember_me',
+};
+
+// Navigation Routes
+export const ROUTES = {
+    // Auth Stack
+    SPLASH: 'Splash',
+    LOGIN: 'Login',
+    REGISTER: 'Register',
+    FORGOT_PASSWORD: 'ForgotPassword',
+
+    // Main Stack
+    MAIN_TABS: 'MainTabs',
+
+    // Company Screens
+    EDIT_COMPANY: 'EditCompany',
+    ADD_COMPANY: 'AddCompany',
+
+    // Tab Screens
+    DASHBOARD: 'Dashboard',
+    CONTACTS: 'Contacts',
+    LEADS: 'Leads',
+    PIPELINE: 'Pipeline',
+    TASKS: 'Tasks',
+    PROFILE: 'Profile',
+
+    // Detail Screens
+    LEAD_DETAILS: 'LeadDetails',
+    TASK_DETAILS: 'TaskDetails',
+    ADD_LEAD: 'AddLead',
+    ADD_TASK: 'AddTask',
+    EDIT_PROFILE: 'EditProfile',
+    SETTINGS: 'Settings',
+};
+
+
+
+// Lead Status
+export const LEAD_STATUS = {
+    NEW: 'new',
+    CONTACTED: 'contacted',
+    QUALIFIED: 'qualified',
+    PROPOSAL: 'proposal',
+    NEGOTIATION: 'negotiation',
+    CLOSED_WON: 'closed_won',
+    CLOSED_LOST: 'closed_lost',
+};
+
+// Task Priority
+export const TASK_PRIORITY = {
+    LOW: 'low',
+    MEDIUM: 'medium',
+    HIGH: 'high',
+    URGENT: 'urgent',
+};
+
+// Task Status
+export const TASK_STATUS = {
+    PENDING: 'pending',
+    IN_PROGRESS: 'in_progress',
+    COMPLETED: 'completed',
+    CANCELLED: 'cancelled',
+};
