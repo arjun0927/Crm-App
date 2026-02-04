@@ -32,7 +32,7 @@ const TabBarIcon = ({ name, focused, color }) => {
 const BottomTabNavigator = () => {
     return (
         <Tab.Navigator
-            initialRouteName={ROUTES.DASHBOARD}
+            initialRouteName={ROUTES.LEADS}
             screenOptions={{
                 headerShown: false,
                 tabBarActiveTintColor: Colors.tabBarActive,
@@ -43,34 +43,7 @@ const BottomTabNavigator = () => {
                 tabBarHideOnKeyboard: true,
             }}
         >
-            <Tab.Screen
-                name={ROUTES.DASHBOARD}
-                component={DashboardScreen}
-                options={{
-                    tabBarLabel: 'Companies',
-                    tabBarIcon: ({ focused, color }) => (
-                        <TabBarIcon
-                            name={focused ? 'office-building' : 'office-building-outline'}
-                            focused={focused}
-                            color={color}
-                        />
-                    ),
-                }}
-            />
-            <Tab.Screen
-                name={ROUTES.CONTACTS}
-                component={ContactsScreen}
-                options={{
-                    tabBarLabel: 'Contacts',
-                    tabBarIcon: ({ focused, color }) => (
-                        <TabBarIcon
-                            name={focused ? 'account-multiple' : 'account-multiple-outline'}
-                            focused={focused}
-                            color={color}
-                        />
-                    ),
-                }}
-            />
+
             <Tab.Screen
                 name={ROUTES.LEADS}
                 component={LeadsScreen}
@@ -99,6 +72,34 @@ const BottomTabNavigator = () => {
                     ),
                 }}
             />
+            <Tab.Screen
+                name={ROUTES.DASHBOARD}
+                component={DashboardScreen}
+                options={{
+                    tabBarLabel: 'Companies',
+                    tabBarIcon: ({ focused, color }) => (
+                        <TabBarIcon
+                            name={focused ? 'office-building' : 'office-building-outline'}
+                            focused={focused}
+                            color={color}
+                        />
+                    ),
+                }}
+            />
+            <Tab.Screen
+                name={ROUTES.CONTACTS}
+                component={ContactsScreen}
+                options={{
+                    tabBarLabel: 'Contacts',
+                    tabBarIcon: ({ focused, color }) => (
+                        <TabBarIcon
+                            name={focused ? 'account-multiple' : 'account-multiple-outline'}
+                            focused={focused}
+                            color={color}
+                        />
+                    ),
+                }}
+            />
         </Tab.Navigator>
     );
 };
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
     tabBar: {
         backgroundColor: Colors.tabBarBackground,
         borderTopWidth: 0,
-        height: Platform.OS === 'ios' ? vs(85) : vs(65),
+        height: Platform.OS === 'ios' ? vs(85) : vs(75),
         paddingTop: vs(8),
         paddingBottom: Platform.OS === 'ios' ? vs(25) : vs(10),
         paddingHorizontal: Spacing.sm,

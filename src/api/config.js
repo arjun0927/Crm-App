@@ -86,6 +86,15 @@ export const API_ENDPOINTS = {
         UPDATE: (id) => `/companies/${id}`,
         DELETE: (id) => `/companies/${id}`,
     },
+
+    // Contacts
+    CONTACTS: {
+        LIST: '/crm-contacts',
+        CREATE: '/crm-contacts',
+        DETAIL: (id) => `/crm-contacts/${id}`,
+        UPDATE: (id) => `/crm-contacts/${id}`,
+        DELETE: (id) => `/crm-contacts/${id}`,
+    },
 };
 
 // Request timeout (in milliseconds)

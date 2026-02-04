@@ -29,6 +29,7 @@ export {
     dashboardAPI,
     notificationsAPI,
     companiesAPI,
+    contactsAPI,
 } from './services';
 export { default as API } from './services';
 

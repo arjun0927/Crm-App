@@ -467,6 +467,63 @@ export const companiesAPI = {
     },
 };
 
+// ============================================
+// CONTACTS APIs
+// ============================================
+
+export const contactsAPI = {
+    /**
+     * Get all contacts
+     * @param {object} params - Query params (page, limit, etc.)
+     */
+    getAll: (params = {}) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.CONTACTS.LIST, { params })
+        );
+    },
+
+    /**
+     * Get contact by ID
+     * @param {string|number} id - Contact ID
+     */
+    getById: (id) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.CONTACTS.DETAIL(id))
+        );
+    },
+
+    /**
+     * Create new contact
+     * @param {object} data - Contact data
+     */
+    create: (data) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.CONTACTS.CREATE, data)
+        );
+    },
+
+    /**
+     * Update contact
+     * @param {string|number} id - Contact ID
+     * @param {object} data - Contact data to update
+     */
+    update: (id, data) => {
+        return handleRequest(
+            apiClient.put(API_ENDPOINTS.CONTACTS.UPDATE(id), data)
+        );
+    },
+
+    /**
+     * Delete contact
+     * @param {string|number} id - Contact ID
+     */
+    delete: (id) => {
+        return handleRequest(
+            apiClient.delete(API_ENDPOINTS.CONTACTS.DELETE(id))
+        );
+    },
+};
+
 // Export all APIs
 export default {
     auth: authAPI,
@@ -476,5 +533,6 @@ export default {
     dashboard: dashboardAPI,
     notifications: notificationsAPI,
     companies: companiesAPI,
+    contacts: contactsAPI,
 };
 

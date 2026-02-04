@@ -279,12 +279,12 @@ const LoginScreen = ({ navigation }) => {
                                 >
                                     <Icon name="google" size={ms(24)} color="#DB4437" />
                                 </TouchableOpacity>
-                                <TouchableOpacity style={styles.socialButton}>
+                                {/* <TouchableOpacity style={styles.socialButton}>
                                     <Icon name="apple" size={ms(24)} color={Colors.black} />
                                 </TouchableOpacity>
                                 <TouchableOpacity style={styles.socialButton}>
                                     <Icon name="microsoft" size={ms(24)} color="#00A4EF" />
-                                </TouchableOpacity>
+                                </TouchableOpacity> */}
                             </View>
                         </Animated.View>
 

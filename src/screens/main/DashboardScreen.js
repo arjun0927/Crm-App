@@ -3,7 +3,7 @@
  * Main overview screen with company list and pagination
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
     View,
@@ -194,22 +194,48 @@ const DashboardScreen = ({ navigation }) => {
     const [hasMore, setHasMore] = useState(true);
     const [companies, setCompanies] = useState([]);
     const { user } = useAuth();
+    const searchTimeoutRef = useRef(null);
+    const currentSearchRef = useRef('');
+    const isInitialLoadRef = useRef(true);
 
-    // Filter companies based on search
-    const filteredCompanies = React.useMemo(() => {
-        if (!searchQuery.trim()) return companies;
-
-        const query = searchQuery.toLowerCase();
-        return companies.filter(company =>
-            (company.name && company.name.toLowerCase().includes(query)) ||
-            (company.ownerName && company.ownerName.toLowerCase().includes(query)) ||
-            (company.salesperson && company.salesperson.toLowerCase().includes(query))
-        );
-    }, [companies, searchQuery]);
-
-    // Fetch companies on mount
+    // Debounced search effect
     useEffect(() => {
-        fetchCompanies(1, true);
+        // Skip on initial mount - let the other useEffect handle it
+        if (isInitialLoadRef.current) {
+            return;
+        }
+
+        // Clear any existing timeout
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        // Store current search query
+        currentSearchRef.current = searchQuery;
+
+        // If search query is empty, fetch all companies immediately
+        if (!searchQuery.trim()) {
+            fetchCompanies(1, false, '');
+            return;
+        }
+
+        // Debounce the search API call (500ms)
+        searchTimeoutRef.current = setTimeout(() => {
+            fetchCompanies(1, false, searchQuery.trim());
+        }, 300);
+
+        // Cleanup timeout on unmount or query change
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, [searchQuery]);
+
+    // Fetch companies on mount (initial load only)
+    useEffect(() => {
+        fetchCompanies(1, true, '');
+        isInitialLoadRef.current = false;
     }, []);
 
     // Refresh companies when screen comes back into focus (after editing)
@@ -222,23 +248,36 @@ const DashboardScreen = ({ navigation }) => {
         }, [])
     );
 
-    const fetchCompanies = async (pageNum = 1, isInitial = false) => {
+    const fetchCompanies = async (pageNum = 1, showLoader = false, search = '') => {
         try {
-            if (isInitial) {
+            // Only show loading spinner on initial load, not during search
+            if (showLoader) {
                 setLoading(true);
-            } else {
+            } else if (pageNum > 1) {
                 setLoadingMore(true);
             }
 
-            const response = await companiesAPI.getAll({ page: pageNum, limit: LIMIT });
+            // Build params with search
+            const params = { page: pageNum, limit: LIMIT };
+            if (search) {
+                params.search = search;
+            }
 
-            console.log('Companies API Response:', response);
+            const response = await companiesAPI.getAll(params);
+
+            console.log('Companies API Response:', response, 'Search:', search);
+
+            // Check if this response is still relevant (search query hasn't changed)
+            if (search !== currentSearchRef.current && search !== '') {
+                console.log('Search query changed, discarding stale response');
+                return;
+            }
 
             if (response.success) {
                 const companiesData = response.data?.data || response.data?.companies || response.data || [];
                 const newCompanies = Array.isArray(companiesData) ? companiesData : [];
 
-                if (isInitial) {
+                if (pageNum === 1) {
                     setCompanies(newCompanies);
                 } else {
                     setCompanies(prev => [...prev, ...newCompanies]);
@@ -264,14 +303,14 @@ const DashboardScreen = ({ navigation }) => {
     const onRefresh = useCallback(() => {
         setRefreshing(true);
         setHasMore(true);
-        fetchCompanies(1, true);
-    }, []);
+        fetchCompanies(1, true, searchQuery.trim());
+    }, [searchQuery]);
 
     const loadMore = useCallback(() => {
         if (!loadingMore && hasMore && !loading) {
-            fetchCompanies(page + 1, false);
+            fetchCompanies(page + 1, false, searchQuery.trim());
         }
-    }, [loadingMore, hasMore, loading, page]);
+    }, [loadingMore, hasMore, loading, page, searchQuery]);
 
     const renderHeader = () => (
         <View style={styles.header}>
