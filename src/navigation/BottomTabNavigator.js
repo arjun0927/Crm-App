@@ -1,6 +1,6 @@
 /**
  * Bottom Tab Navigator
- * Main app tab navigation
+ * Main app tab navigation with 4 tabs: Leads, Pipeline, Tasks, Settings
  */
 
 import React from 'react';
@@ -12,10 +12,10 @@ import { Spacing, BorderRadius, Shadow } from '../constants/Spacing';
 import { ms, vs } from '../utils/Responsive';
 import { ROUTES } from '../constants';
 import {
-    DashboardScreen,
-    ContactsScreen,
     LeadsScreen,
     PipelineScreen,
+    TasksScreen,
+    SettingsScreen,
 } from '../screens';
 
 const Tab = createBottomTabNavigator();
@@ -43,7 +43,6 @@ const BottomTabNavigator = () => {
                 tabBarHideOnKeyboard: true,
             }}
         >
-
             <Tab.Screen
                 name={ROUTES.LEADS}
                 component={LeadsScreen}
@@ -73,13 +72,13 @@ const BottomTabNavigator = () => {
                 }}
             />
             <Tab.Screen
-                name={ROUTES.DASHBOARD}
-                component={DashboardScreen}
+                name={ROUTES.TASKS}
+                component={TasksScreen}
                 options={{
-                    tabBarLabel: 'Companies',
+                    tabBarLabel: 'Tasks',
                     tabBarIcon: ({ focused, color }) => (
                         <TabBarIcon
-                            name={focused ? 'office-building' : 'office-building-outline'}
+                            name={focused ? 'clipboard-check' : 'clipboard-check-outline'}
                             focused={focused}
                             color={color}
                         />
@@ -87,13 +86,13 @@ const BottomTabNavigator = () => {
                 }}
             />
             <Tab.Screen
-                name={ROUTES.CONTACTS}
-                component={ContactsScreen}
+                name={ROUTES.SETTINGS}
+                component={SettingsScreen}
                 options={{
-                    tabBarLabel: 'Contacts',
+                    tabBarLabel: 'Settings',
                     tabBarIcon: ({ focused, color }) => (
                         <TabBarIcon
-                            name={focused ? 'account-multiple' : 'account-multiple-outline'}
+                            name={focused ? 'cog' : 'cog-outline'}
                             focused={focused}
                             color={color}
                         />

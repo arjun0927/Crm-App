@@ -304,23 +304,23 @@ const ContactsScreen = ({ navigation }) => {
 
     const renderHeader = () => (
         <View style={styles.header}>
-            <View>
-                <AppText size="sm" color={Colors.textSecondary}>
-                    Welcome back,
-                </AppText>
-                <AppText size="xl" weight="bold">
-                    {user?.name || 'User'}
-                </AppText>
+            <View style={styles.headerLeft}>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                >
+                    <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
+                </TouchableOpacity>
+                <View>
+                    <AppText size="sm" color={Colors.textSecondary}>
+                        Manage
+                    </AppText>
+                    <AppText size="xl" weight="bold">
+                        Contacts
+                    </AppText>
+                </View>
             </View>
             <View style={styles.headerActions}>
-                <TouchableOpacity style={styles.notificationButton}>
-                    <Icon name="bell-outline" size={ms(24)} color={Colors.textPrimary} />
-                    <View style={styles.notificationBadge}>
-                        <AppText size={8} weight="bold" color={Colors.white}>
-                            3
-                        </AppText>
-                    </View>
-                </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.profileButton}
                     onPress={() => navigation.navigate('Profile')}
@@ -373,8 +373,7 @@ const ContactsScreen = ({ navigation }) => {
 
     const handleEditContact = (contact) => {
         console.log('Edit contact:', contact._id);
-        // TODO: Navigate to edit contact screen
-        // navigation.navigate('EditContact', { contact });
+        navigation.navigate('EditContact', { contact });
     };
 
     const handleDeleteContact = (contact) => {
@@ -502,6 +501,20 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingVertical: vs(16),
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+    },
+    backButton: {
+        width: ms(44),
+        height: ms(44),
+        borderRadius: BorderRadius.round,
+        backgroundColor: Colors.white,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...Shadow.sm,
     },
     headerActions: {
         flexDirection: 'row',

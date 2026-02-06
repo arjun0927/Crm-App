@@ -13,8 +13,19 @@ export {
     PipelineScreen,
     TasksScreen,
     ProfileScreen,
-    AddCompanyScreen
+    AddCompanyScreen,
+    SettingsScreen,
+    ReportsScreen,
+    FollowUpEngineScreen,
 } from './main';
 
 // Detail Screens
-export { LeadDetailsScreen, TaskDetailsScreen, AddLeadScreen, AddTaskScreen } from './details';
+export {
+    LeadDetailsScreen,
+    TaskDetailsScreen,
+    AddLeadScreen,
+    AddTaskScreen,
+    EditLeadScreen,
+    EditContactScreen,
+} from './details';
+

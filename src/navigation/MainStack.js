@@ -13,6 +13,11 @@ import {
     AddLeadScreen,
     AddTaskScreen,
     ProfileScreen,
+    DashboardScreen,
+    ContactsScreen,
+    AddCompanyScreen,
+    ReportsScreen,
+    FollowUpEngineScreen,
 } from '../screens';
 import EditCompanyScreen from '../screens/main/EditCompanyScreen';
 
@@ -65,14 +70,44 @@ const MainStack = () => {
                 }}
             />
 
-            {/* Company Screens */}
+            {/* Company Screens (Accessed via Settings) */}
             <Stack.Screen
-                name={'EditCompany'}
+                name={ROUTES.DASHBOARD}
+                component={DashboardScreen}
+            />
+            <Stack.Screen
+                name={ROUTES.ADD_COMPANY}
+                component={AddCompanyScreen}
+                options={{
+                    animation: 'slide_from_bottom',
+                    presentation: 'modal',
+                }}
+            />
+            <Stack.Screen
+                name={ROUTES.EDIT_COMPANY}
                 component={EditCompanyScreen}
                 options={{
                     animation: 'slide_from_bottom',
                     presentation: 'modal',
                 }}
+            />
+
+            {/* Contacts Screen (Accessed via Settings) */}
+            <Stack.Screen
+                name={ROUTES.CONTACTS}
+                component={ContactsScreen}
+            />
+
+            {/* Reports Screen */}
+            <Stack.Screen
+                name={ROUTES.REPORTS}
+                component={ReportsScreen}
+            />
+
+            {/* Follow Up Engine Screen */}
+            <Stack.Screen
+                name={ROUTES.FOLLOW_UP_ENGINE}
+                component={FollowUpEngineScreen}
             />
 
             {/* Profile Screen */}

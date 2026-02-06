@@ -9,3 +9,6 @@ export { default as PipelineScreen } from './PipelineScreen';
 export { default as TasksScreen } from './TasksScreen';
 export { default as ProfileScreen } from './ProfileScreen';
 export { default as AddCompanyScreen } from './AddCompanyScreen';
+export { default as SettingsScreen } from './SettingsScreen';
+export { default as ReportsScreen } from './ReportsScreen';
+export { default as FollowUpEngineScreen } from './FollowUpEngineScreen';

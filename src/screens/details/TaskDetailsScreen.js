@@ -1,58 +1,105 @@
 /**
  * Task Details Screen
- * Detailed view of a single task with actions
+ * Detailed view of a single task with API integration and actions
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     StyleSheet,
     TouchableOpacity,
     ScrollView,
     Alert,
+    ActivityIndicator,
+    RefreshControl,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs } from '../../utils/Responsive';
-import { formatDate } from '../../utils/Helpers';
-import { useTasks } from '../../context';
 import { ScreenWrapper, AppText, AppButton } from '../../components';
+import { tasksAPI } from '../../api';
 
 const TaskDetailsScreen = ({ route, navigation }) => {
-    const { task } = route.params || {};
-    const { toggleTaskStatus, deleteTask, getTaskById } = useTasks();
-    const [isCompleted, setIsCompleted] = useState(task?.status === 'completed');
-    const [currentTask, setCurrentTask] = useState(task);
+    const { task: initialTask, taskId } = route.params || {};
+    const [currentTask, setCurrentTask] = useState(initialTask || null);
+    const [loading, setLoading] = useState(!initialTask);
+    const [refreshing, setRefreshing] = useState(false);
+    const [isCompleted, setIsCompleted] = useState(initialTask?.status === 'completed');
+
+    // Fetch task details from API
+    const fetchTaskDetails = useCallback(async (showLoader = true) => {
+        const id = taskId || initialTask?._id || initialTask?.id;
+        if (!id) {
+            console.error('Task ID not found');
+            return;
+        }
+
+        try {
+            if (showLoader) setLoading(true);
+            console.log('Fetching task details for ID:', id);
+            const response = await tasksAPI.getById(id);
+            console.log('Task details response:', response);
+
+            if (response.success) {
+                const taskData = response.data?.data || response.data;
+                console.log('Task data:', taskData);
+                setCurrentTask(taskData);
+                setIsCompleted(taskData?.status === 'completed');
+            } else {
+                console.error('Failed to fetch task:', response.error);
+            }
+        } catch (error) {
+            console.error('Error fetching task:', error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, [taskId, initialTask]);
 
     useEffect(() => {
-        // Sync with context
-        if (task?.id) {
-            const latestTask = getTaskById(task.id);
-            if (latestTask) {
-                setCurrentTask(latestTask);
-                setIsCompleted(latestTask.status === 'completed');
-            }
-        }
-    }, [task?.id, getTaskById]);
+        // Fetch fresh data from API
+        fetchTaskDetails();
+    }, [fetchTaskDetails]);
 
-    if (!currentTask) {
-        return (
-            <ScreenWrapper withPadding>
-                <View style={styles.errorContainer}>
-                    <AppText color={Colors.error}>Task not found</AppText>
-                </View>
-            </ScreenWrapper>
-        );
-    }
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchTaskDetails(false);
+    };
 
+    // Helper functions
     const getPriorityColor = (priority) => {
         const colors = {
             high: Colors.error,
-            medium: Colors.warning,
+            medium: '#f97316',
             low: Colors.success,
+            urgent: '#dc2626',
         };
-        return colors[priority] || Colors.textMuted;
+        return colors[priority?.toLowerCase()] || Colors.textMuted;
+    };
+
+    const getStatusColor = (status) => {
+        const colors = {
+            open: '#f97316',
+            pending: '#f97316',
+            in_progress: Colors.info,
+            'in progress': Colors.info,
+            completed: Colors.success,
+            cancelled: Colors.textMuted,
+        };
+        return colors[status?.toLowerCase()] || Colors.textMuted;
+    };
+
+    const getStatusName = (status) => {
+        const names = {
+            open: 'Pending',
+            pending: 'Pending',
+            in_progress: 'In Progress',
+            'in progress': 'In Progress',
+            completed: 'Completed',
+            cancelled: 'Cancelled',
+        };
+        return names[status?.toLowerCase()] || status || 'Pending';
     };
 
     const getTypeIcon = (type) => {
@@ -62,8 +109,9 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             meeting: 'calendar',
             document: 'file-document',
             review: 'text-box-check',
+            follow_up: 'account-check',
         };
-        return icons[type] || 'checkbox-marked-outline';
+        return icons[type?.toLowerCase()] || 'checkbox-marked-outline';
     };
 
     const getTypeLabel = (type) => {
@@ -73,8 +121,9 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             meeting: 'Meeting',
             document: 'Document',
             review: 'Review',
+            follow_up: 'Follow Up',
         };
-        return labels[type] || 'Task';
+        return labels[type?.toLowerCase()] || type || 'Task';
     };
 
     const getTypeColor = (type) => {
@@ -82,17 +131,63 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             call: Colors.success,
             email: Colors.info,
             meeting: Colors.primary,
-            document: Colors.accent,
-            review: Colors.secondary,
+            document: Colors.accent || '#9333ea',
+            review: Colors.secondary || '#6366f1',
+            follow_up: '#f97316',
         };
-        return colors[type] || Colors.textMuted;
+        return colors[type?.toLowerCase()] || Colors.textMuted;
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+            });
+        } catch {
+            return 'N/A';
+        }
+    };
+
+    const formatDateTime = (dateString) => {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+            });
+        } catch {
+            return 'N/A';
+        }
     };
 
     const handleComplete = async () => {
-        const result = await toggleTaskStatus(currentTask.id);
-        if (result.success) {
-            setIsCompleted(!isCompleted);
+        try {
+            const id = currentTask?._id || currentTask?.id;
+            const response = await tasksAPI.toggleStatus(id);
+            if (response.success) {
+                setIsCompleted(!isCompleted);
+                // Refresh task data
+                fetchTaskDetails(false);
+            } else {
+                Alert.alert('Error', 'Failed to update task status');
+            }
+        } catch (error) {
+            console.error('Error toggling status:', error);
+            Alert.alert('Error', 'Failed to update task status');
         }
+    };
+
+    const handleEdit = () => {
+        navigation.navigate('EditTask', { task: currentTask });
     };
 
     const handleDelete = () => {
@@ -105,10 +200,15 @@ const TaskDetailsScreen = ({ route, navigation }) => {
                     text: 'Delete',
                     style: 'destructive',
                     onPress: async () => {
-                        const result = await deleteTask(currentTask.id);
-                        if (result.success) {
-                            navigation.goBack();
-                        } else {
+                        try {
+                            const id = currentTask?._id || currentTask?.id;
+                            const response = await tasksAPI.delete(id);
+                            if (response.success) {
+                                navigation.goBack();
+                            } else {
+                                Alert.alert('Error', 'Failed to delete task');
+                            }
+                        } catch (error) {
                             Alert.alert('Error', 'Failed to delete task');
                         }
                     },
@@ -116,6 +216,57 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             ]
         );
     };
+
+    // Loading State
+    if (loading) {
+        return (
+            <ScreenWrapper withPadding backgroundColor={Colors.background}>
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                    <AppText size="lg" weight="semiBold">Task Details</AppText>
+                    <View style={{ width: ms(44) }} />
+                </View>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <AppText size="base" color={Colors.textMuted} style={{ marginTop: Spacing.md }}>
+                        Loading task details...
+                    </AppText>
+                </View>
+            </ScreenWrapper>
+        );
+    }
+
+    // Error State
+    if (!currentTask) {
+        return (
+            <ScreenWrapper withPadding backgroundColor={Colors.background}>
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                    <AppText size="lg" weight="semiBold">Task Details</AppText>
+                    <View style={{ width: ms(44) }} />
+                </View>
+                <View style={styles.errorContainer}>
+                    <Icon name="alert-circle-outline" size={ms(60)} color={Colors.textMuted} />
+                    <AppText size="lg" weight="semiBold" color={Colors.textSecondary} style={{ marginTop: Spacing.md }}>
+                        Task not found
+                    </AppText>
+                    <TouchableOpacity onPress={() => fetchTaskDetails()} style={{ marginTop: Spacing.md }}>
+                        <AppText size="base" color={Colors.primary}>Try Again</AppText>
+                    </TouchableOpacity>
+                </View>
+            </ScreenWrapper>
+        );
+    }
 
     const renderHeader = () => (
         <View style={styles.header}>
@@ -125,155 +276,219 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             >
                 <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
             </TouchableOpacity>
-            <AppText size="lg" weight="semiBold">
+            <AppText size="lg" weight="semiBold" numberOfLines={1} style={{ flex: 1, textAlign: 'center' }}>
                 Task Details
             </AppText>
             <TouchableOpacity
                 style={styles.headerButton}
-                onPress={() => { }}
+                onPress={handleEdit}
             >
-                <Icon name="dots-vertical" size={ms(22)} color={Colors.textPrimary} />
+                <Icon name="pencil" size={ms(20)} color={Colors.info} />
             </TouchableOpacity>
         </View>
     );
 
     const renderTaskCard = () => (
         <View style={styles.taskCard}>
-            <View style={styles.taskHeader}>
-                <View style={[styles.typeIcon, { backgroundColor: getTypeColor(currentTask.type) + '20' }]}>
-                    <Icon name={getTypeIcon(currentTask.type)} size={ms(24)} color={getTypeColor(currentTask.type)} />
+            {/* Title with Status & Priority Badges */}
+            <AppText size="xl" weight="bold" style={styles.taskTitle}>
+                {currentTask.title || 'Untitled Task'}
+            </AppText>
+
+            {/* Badges Row */}
+            <View style={styles.badgesRow}>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(currentTask.status) }]}>
+                    <Icon name="clock-outline" size={ms(12)} color={Colors.white} />
+                    <AppText size="xs" weight="semiBold" color={Colors.white} style={styles.badgeText}>
+                        {getStatusName(currentTask.status)}
+                    </AppText>
                 </View>
-                <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(currentTask.priority) + '20' }]}>
-                    <Icon name="flag" size={ms(14)} color={getPriorityColor(currentTask.priority)} />
-                    <AppText size="xs" weight="semiBold" color={getPriorityColor(currentTask.priority)} style={styles.priorityText}>
-                        {currentTask.priority?.toUpperCase()} PRIORITY
+                <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(currentTask.priority) }]}>
+                    <AppText size="xs" weight="semiBold" color={Colors.white}>
+                        {currentTask.priority?.charAt(0).toUpperCase() + currentTask.priority?.slice(1).toLowerCase()} Priority
                     </AppText>
                 </View>
             </View>
 
-            <AppText size="xl" weight="bold" style={styles.taskTitle}>
-                {currentTask.title}
-            </AppText>
-
-            {currentTask.description && (
-                <AppText size="base" color={Colors.textSecondary} style={styles.taskDescription}>
-                    {currentTask.description}
+            {/* Due Date */}
+            <View style={styles.dueDateRow}>
+                <Icon name="calendar" size={ms(16)} color={Colors.textMuted} />
+                <AppText size="sm" color={Colors.textSecondary} style={{ marginLeft: Spacing.xs }}>
+                    Due: {formatDate(currentTask.dueDate)}
                 </AppText>
-            )}
-
-            {/* Complete Button */}
-            <TouchableOpacity
-                style={[
-                    styles.completeButton,
-                    isCompleted && styles.completeButtonActive,
-                ]}
-                onPress={handleComplete}
-            >
-                <Icon
-                    name={isCompleted ? 'check-circle' : 'circle-outline'}
-                    size={ms(24)}
-                    color={isCompleted ? Colors.white : Colors.success}
-                />
-                <AppText
-                    size="base"
-                    weight="semiBold"
-                    color={isCompleted ? Colors.white : Colors.success}
-                    style={styles.completeText}
-                >
-                    {isCompleted ? 'Completed' : 'Mark as Complete'}
-                </AppText>
-            </TouchableOpacity>
+            </View>
         </View>
     );
 
-    const renderDetails = () => (
+    const renderDescriptionSection = () => (
         <View style={styles.section}>
-            <AppText size="lg" weight="semiBold" style={styles.sectionTitle}>
-                Details
-            </AppText>
-            <View style={styles.detailsCard}>
+            <View style={styles.sectionHeader}>
+                <Icon name="file-document-outline" size={ms(20)} color={Colors.primary} />
+                <AppText size="base" weight="semiBold" style={styles.sectionHeaderTitle}>
+                    Description
+                </AppText>
+            </View>
+            <View style={styles.sectionCard}>
+                <AppText size="sm" color={currentTask.description ? Colors.textPrimary : Colors.textMuted}>
+                    {currentTask.description || 'No description provided'}
+                </AppText>
+            </View>
+        </View>
+    );
+
+    const renderRelatedToSection = () => {
+        const relatedTo = currentTask.lead?.title || currentTask.lead?.name || currentTask.relatedTo?.name || null;
+        return (
+            <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                    <Icon name="link-variant" size={ms(20)} color={Colors.primary} />
+                    <AppText size="base" weight="semiBold" style={styles.sectionHeaderTitle}>
+                        Related To
+                    </AppText>
+                </View>
+                <View style={styles.sectionCard}>
+                    <AppText size="sm" color={relatedTo ? Colors.info : Colors.textMuted}>
+                        {relatedTo || 'No related entity'}
+                    </AppText>
+                </View>
+            </View>
+        );
+    };
+
+    const renderActivitySection = () => {
+        const activities = currentTask.activities || currentTask.history || [];
+        if (activities.length === 0) return null;
+
+        return (
+            <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                    <Icon name="message-text-outline" size={ms(20)} color={Colors.primary} />
+                    <AppText size="base" weight="semiBold" style={styles.sectionHeaderTitle}>
+                        Activity
+                    </AppText>
+                </View>
+                <View style={styles.sectionCard}>
+                    {activities.map((activity, index) => (
+                        <View key={index}>
+                            {index > 0 && <View style={styles.divider} />}
+                            <View style={styles.activityItem}>
+                                <View style={styles.activityIndicator} />
+                                <View style={styles.activityContent}>
+                                    <AppText size="sm" weight="medium" color={Colors.textPrimary}>
+                                        {activity.title || activity.action || 'Task updated'}
+                                    </AppText>
+                                    {activity.description && (
+                                        <AppText size="xs" color={Colors.textMuted} style={{ marginTop: 2 }}>
+                                            {activity.description}
+                                        </AppText>
+                                    )}
+                                    <View style={styles.activityMeta}>
+                                        {activity.type && (
+                                            <View style={styles.activityBadge}>
+                                                <AppText size="xs" color={Colors.textSecondary}>
+                                                    {activity.type}
+                                                </AppText>
+                                            </View>
+                                        )}
+                                        <AppText size="xs" color={Colors.textMuted}>
+                                            {formatDateTime(activity.createdAt || activity.date)}
+                                        </AppText>
+                                    </View>
+                                    {activity.user?.name && (
+                                        <AppText size="xs" color={Colors.textMuted} style={{ marginTop: 2 }}>
+                                            by {activity.user.name}
+                                        </AppText>
+                                    )}
+                                </View>
+                            </View>
+                        </View>
+                    ))}
+                </View>
+            </View>
+        );
+    };
+
+    const renderTaskDetailsSection = () => (
+        <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+                <Icon name="clock-outline" size={ms(20)} color={Colors.primary} />
+                <AppText size="base" weight="semiBold" style={styles.sectionHeaderTitle}>
+                    Task Details
+                </AppText>
+            </View>
+            <View style={styles.sectionCard}>
+                {/* Status */}
                 <View style={styles.detailRow}>
-                    <View style={styles.detailIcon}>
-                        <Icon name="clipboard-text-outline" size={ms(20)} color={Colors.primary} />
-                    </View>
-                    <View style={styles.detailContent}>
-                        <AppText size="xs" color={Colors.textMuted}>
-                            Type
-                        </AppText>
-                        <AppText size="base" weight="medium">
-                            {getTypeLabel(currentTask.type)}
+                    <AppText size="sm" color={Colors.textMuted} style={styles.detailLabel}>
+                        Status
+                    </AppText>
+                    <View style={[styles.detailBadge, { backgroundColor: getStatusColor(currentTask.status) }]}>
+                        <AppText size="xs" weight="semiBold" color={Colors.white}>
+                            {getStatusName(currentTask.status)}
                         </AppText>
                     </View>
                 </View>
-
                 <View style={styles.divider} />
 
+                {/* Priority */}
                 <View style={styles.detailRow}>
-                    <View style={styles.detailIcon}>
-                        <Icon name="account" size={ms(20)} color={Colors.primary} />
-                    </View>
-                    <View style={styles.detailContent}>
-                        <AppText size="xs" color={Colors.textMuted}>
-                            Related Lead
-                        </AppText>
-                        <AppText size="base" weight="medium">
-                            {currentTask.leadName || 'No lead assigned'}
+                    <AppText size="sm" color={Colors.textMuted} style={styles.detailLabel}>
+                        Priority
+                    </AppText>
+                    <View style={[styles.detailBadge, { backgroundColor: getPriorityColor(currentTask.priority) }]}>
+                        <AppText size="xs" weight="semiBold" color={Colors.white}>
+                            {currentTask.priority?.charAt(0).toUpperCase() + currentTask.priority?.slice(1).toLowerCase()}
                         </AppText>
                     </View>
                 </View>
-
                 <View style={styles.divider} />
 
+                {/* Due Date */}
                 <View style={styles.detailRow}>
-                    <View style={styles.detailIcon}>
-                        <Icon name="calendar" size={ms(20)} color={Colors.primary} />
-                    </View>
-                    <View style={styles.detailContent}>
-                        <AppText size="xs" color={Colors.textMuted}>
-                            Due Date
-                        </AppText>
-                        <AppText size="base" weight="medium">
-                            {currentTask.dueDate ? formatDate(currentTask.dueDate, 'long') : 'No due date'}
-                        </AppText>
-                    </View>
+                    <AppText size="sm" color={Colors.textMuted} style={styles.detailLabel}>
+                        Due Date
+                    </AppText>
+                    <AppText size="sm" weight="medium" color={Colors.textPrimary}>
+                        {formatDate(currentTask.dueDate)}
+                    </AppText>
+                </View>
+                <View style={styles.divider} />
+
+                {/* Assigned To */}
+                <View style={styles.detailRow}>
+                    <AppText size="sm" color={Colors.textMuted} style={styles.detailLabel}>
+                        Assigned To
+                    </AppText>
+                    <AppText size="sm" weight="medium" color={Colors.textPrimary}>
+                        {currentTask.assignedTo?.name || currentTask.assignedTo?.firstName || 'N/A'}
+                    </AppText>
+                </View>
+                <View style={styles.divider} />
+
+                {/* Created */}
+                <View style={styles.detailRow}>
+                    <AppText size="sm" color={Colors.textMuted} style={styles.detailLabel}>
+                        Created
+                    </AppText>
+                    <AppText size="sm" weight="medium" color={Colors.textPrimary}>
+                        {formatDate(currentTask.createdAt)}
+                    </AppText>
                 </View>
 
-                <View style={styles.divider} />
-
-                <View style={styles.detailRow}>
-                    <View style={styles.detailIcon}>
-                        <Icon name="clock-outline" size={ms(20)} color={Colors.primary} />
-                    </View>
-                    <View style={styles.detailContent}>
-                        <AppText size="xs" color={Colors.textMuted}>
-                            Created
-                        </AppText>
-                        <AppText size="base" weight="medium">
-                            {currentTask.createdAt ? formatDate(currentTask.createdAt, 'datetime') : 'Unknown'}
-                        </AppText>
-                    </View>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.detailRow}>
-                    <View style={styles.detailIcon}>
-                        <Icon name="information-outline" size={ms(20)} color={Colors.primary} />
-                    </View>
-                    <View style={styles.detailContent}>
-                        <AppText size="xs" color={Colors.textMuted}>
-                            Status
-                        </AppText>
-                        <View style={[
-                            styles.statusBadge,
-                            { backgroundColor: isCompleted ? Colors.successLight : Colors.warningLight }
-                        ]}>
-                            <AppText size="sm" weight="semiBold" color={isCompleted ? Colors.success : Colors.warning}>
-                                {isCompleted ? 'Completed' : currentTask.status?.replace('_', ' ').toUpperCase()}
+                {/* Created By */}
+                {currentTask.createdBy && (
+                    <>
+                        <View style={styles.divider} />
+                        <View style={styles.detailRow}>
+                            <AppText size="sm" color={Colors.textMuted} style={styles.detailLabel}>
+                                Created By
+                            </AppText>
+                            <AppText size="sm" weight="medium" color={Colors.textPrimary}>
+                                {currentTask.createdBy?.name || 'N/A'}
                             </AppText>
                         </View>
-                    </View>
-                </View>
+                    </>
+                )}
             </View>
         </View>
     );
@@ -284,7 +499,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
                 title="Edit Task"
                 variant="primary"
                 icon="pencil"
-                onPress={() => { }}
+                onPress={handleEdit}
                 style={styles.editButton}
             />
             <AppButton
@@ -300,10 +515,23 @@ const TaskDetailsScreen = ({ route, navigation }) => {
 
     return (
         <ScreenWrapper withPadding backgroundColor={Colors.background}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={[Colors.primary]}
+                        tintColor={Colors.primary}
+                    />
+                }
+            >
                 {renderHeader()}
                 {renderTaskCard()}
-                {renderDetails()}
+                {renderDescriptionSection()}
+                {renderRelatedToSection()}
+                {renderActivitySection()}
+                {renderTaskDetailsSection()}
                 {renderActions()}
                 <View style={styles.bottomSpacer} />
             </ScrollView>
@@ -336,101 +564,129 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         ...Shadow.sm,
     },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    // Task Title Card
     taskCard: {
         backgroundColor: Colors.white,
         borderRadius: BorderRadius.card,
         padding: Spacing.lg,
-        marginBottom: vs(24),
+        marginBottom: vs(16),
         ...Shadow.md,
     },
-    taskHeader: {
+    taskTitle: {
+        marginBottom: Spacing.sm,
+    },
+    badgesRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
         marginBottom: Spacing.md,
     },
-    typeIcon: {
-        width: ms(48),
-        height: ms(48),
-        borderRadius: BorderRadius.md,
-        justifyContent: 'center',
+    statusBadge: {
+        flexDirection: 'row',
         alignItems: 'center',
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 4,
+        borderRadius: BorderRadius.round,
+    },
+    badgeText: {
+        marginLeft: 4,
     },
     priorityBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: Spacing.sm,
-        paddingVertical: 6,
+        paddingVertical: 4,
         borderRadius: BorderRadius.round,
     },
-    priorityText: {
-        marginLeft: 4,
-    },
-    taskTitle: {
-        marginBottom: Spacing.sm,
-    },
-    taskDescription: {
-        marginBottom: Spacing.lg,
-    },
-    completeButton: {
+    dueDateRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: vs(14),
-        borderRadius: BorderRadius.button,
-        borderWidth: 2,
-        borderColor: Colors.success,
     },
-    completeButtonActive: {
-        backgroundColor: Colors.success,
-        borderColor: Colors.success,
+
+    // Sections
+    section: {
+        marginBottom: vs(16),
     },
-    completeText: {
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: Spacing.sm,
+    },
+    sectionHeaderTitle: {
         marginLeft: Spacing.sm,
     },
-    section: {
-        marginBottom: vs(24),
-    },
-    sectionTitle: {
-        marginBottom: Spacing.md,
-    },
-    detailsCard: {
+    sectionCard: {
         backgroundColor: Colors.white,
         borderRadius: BorderRadius.card,
         padding: Spacing.md,
         ...Shadow.sm,
     },
+
+    // Detail Rows
     detailRow: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: Spacing.sm,
+        paddingVertical: vs(10),
     },
-    detailIcon: {
-        width: ms(40),
-        height: ms(40),
-        borderRadius: BorderRadius.sm,
-        backgroundColor: Colors.primaryBackground,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: Spacing.md,
-    },
-    detailContent: {
+    detailLabel: {
         flex: 1,
+    },
+    detailBadge: {
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 4,
+        borderRadius: BorderRadius.round,
     },
     divider: {
         height: 1,
         backgroundColor: Colors.borderLight,
     },
-    statusBadge: {
-        alignSelf: 'flex-start',
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 4,
-        borderRadius: BorderRadius.badge,
-        marginTop: 4,
+
+    // Activity
+    activityItem: {
+        flexDirection: 'row',
+        paddingVertical: Spacing.sm,
     },
+    activityIndicator: {
+        width: 4,
+        backgroundColor: '#f97316',
+        borderRadius: 2,
+        marginRight: Spacing.md,
+    },
+    activityContent: {
+        flex: 1,
+    },
+    activityMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: Spacing.xs,
+        gap: Spacing.sm,
+    },
+    activityBadge: {
+        backgroundColor: Colors.background,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 2,
+        borderRadius: BorderRadius.badge,
+        borderWidth: 1,
+        borderColor: Colors.border,
+    },
+
+    // Actions
     actionsContainer: {
         flexDirection: 'row',
         gap: Spacing.md,
+        marginTop: vs(8),
     },
     editButton: {
         flex: 2,
@@ -441,11 +697,6 @@ const styles = StyleSheet.create({
     },
     bottomSpacer: {
         height: vs(40),
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
 });
 

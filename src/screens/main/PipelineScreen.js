@@ -447,7 +447,7 @@ const PipelineScreen = ({ navigation }) => {
     const renderDealCard = ({ item }) => (
         <DealCard
             deal={item}
-            onPress={() => handleDealPress(item)}
+        // onPress={() => handleDealPress(item)}
         />
     );
 
@@ -573,6 +573,7 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.lg,
         paddingHorizontal: Spacing.md,
         paddingVertical: vs(10),
+        height: vs(48),
         marginBottom: vs(16),
         ...Shadow.sm,
     },

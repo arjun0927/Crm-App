@@ -20,6 +20,12 @@ import {
     AddTaskScreen,
     ProfileScreen,
     AddCompanyScreen,
+    EditLeadScreen,
+    EditContactScreen,
+    DashboardScreen,
+    ContactsScreen,
+    ReportsScreen,
+    FollowUpEngineScreen,
 } from '../screens';
 // Import company screens
 import EditCompanyScreen from '../screens/main/EditCompanyScreen';
@@ -138,6 +144,44 @@ const AppNavigator = () => {
                         presentation: 'modal',
                     }}
                 />
+
+                {/* Lead Edit Screen */}
+                <Stack.Screen
+                    name={ROUTES.EDIT_LEAD}
+                    component={EditLeadScreen}
+                    options={{
+                        animation: 'slide_from_bottom',
+                        presentation: 'modal',
+                    }}
+                />
+
+                <Stack.Screen
+                    name={ROUTES.EDIT_CONTACT}
+                    component={EditContactScreen}
+                    options={{
+                        animation: 'slide_from_bottom',
+                        presentation: 'modal',
+                    }}
+                />
+
+                {/* Settings Sub-Screens */}
+                <Stack.Screen
+                    name={ROUTES.DASHBOARD}
+                    component={DashboardScreen}
+                />
+                <Stack.Screen
+                    name={ROUTES.CONTACTS}
+                    component={ContactsScreen}
+                />
+                <Stack.Screen
+                    name={ROUTES.REPORTS}
+                    component={ReportsScreen}
+                />
+                <Stack.Screen
+                    name={ROUTES.FOLLOW_UP_ENGINE}
+                    component={FollowUpEngineScreen}
+                />
+
                 <Stack.Screen
                     name={ROUTES.PROFILE}
                     component={ProfileScreen}

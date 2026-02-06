@@ -58,8 +58,12 @@ export const ROUTES = {
     TASK_DETAILS: 'TaskDetails',
     ADD_LEAD: 'AddLead',
     ADD_TASK: 'AddTask',
+    EDIT_LEAD: 'EditLead',
+    EDIT_CONTACT: 'EditContact',
     EDIT_PROFILE: 'EditProfile',
     SETTINGS: 'Settings',
+    REPORTS: 'Reports',
+    FOLLOW_UP_ENGINE: 'FollowUpEngine',
 };
 
 
