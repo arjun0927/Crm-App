@@ -130,11 +130,11 @@ const LeadCard = ({ lead, onPress, onEdit, onDelete }) => {
                         <AppText size="base" weight="bold" numberOfLines={1}>
                             {getValue(lead.title) || 'Untitled Lead'}
                         </AppText>
-                        <View style={[styles.statusBadge, { backgroundColor: getStageColor() + '20' }]}>
+                        {/* <View style={[styles.statusBadge, { backgroundColor: getStageColor() + '20' }]}>
                             <AppText size="xs" weight="semiBold" color={getStageColor()}>
                                 {getStageName()}
                             </AppText>
-                        </View>
+                        </View> */}
                     </View>
                 </TouchableOpacity>
 

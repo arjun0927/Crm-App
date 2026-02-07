@@ -17,6 +17,7 @@ import {
   AppProvider,
   LeadsProvider,
   TasksProvider,
+  TabNavigationProvider,
 } from './src/context';
 import { configureGoogleSignIn } from './src/services';
 
@@ -45,7 +46,9 @@ function App(): React.JSX.Element {
         <AuthProvider>
           <LeadsProvider>
             <TasksProvider>
-              <AppNavigator />
+              <TabNavigationProvider>
+                <AppNavigator />
+              </TabNavigationProvider>
             </TasksProvider>
           </LeadsProvider>
         </AuthProvider>

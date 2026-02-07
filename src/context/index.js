@@ -17,3 +17,7 @@ export { default as LeadsContext } from './LeadsContext';
 // Tasks Context
 export { TasksProvider, useTasks } from './TasksContext';
 export { default as TasksContext } from './TasksContext';
+
+// Tab Navigation Context
+export { TabNavigationProvider, useTabNavigation, BOTTOM_SHEET_SCREENS } from './TabNavigationContext';
+export { default as TabNavigationContext } from './TabNavigationContext';

@@ -1,135 +1,103 @@
 /**
  * Bottom Tab Navigator
- * Main app tab navigation with 4 tabs: Leads, Pipeline, Tasks, Settings
+ * Main app navigation with bottom drawer for quick screen access
+ * Uses a custom bottom drawer instead of traditional tab bar
  */
 
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
-import { Spacing, BorderRadius, Shadow } from '../constants/Spacing';
-import { ms, vs } from '../utils/Responsive';
 import { ROUTES } from '../constants';
 import {
     LeadsScreen,
     PipelineScreen,
     TasksScreen,
-    SettingsScreen,
+    DashboardScreen,
+    ContactsScreen,
+    ReportsScreen,
+    FollowUpEngineScreen,
+    ProfileScreen,
 } from '../screens';
+import BottomDrawerNavigation from './BottomDrawerNavigation';
+import { useTabNavigation } from '../context/TabNavigationContext';
+import { vs } from '../utils/Responsive';
 
-const Tab = createBottomTabNavigator();
+// Height of the collapsed drawer to reserve space
+const DRAWER_COLLAPSED_HEIGHT = Platform.OS === 'ios' ? vs(140) : vs(130);
 
-// Tab bar icon component
-const TabBarIcon = ({ name, focused, color }) => {
+// Dynamic content renderer based on active screen
+const DynamicScreenContent = ({ navigation }) => {
+    const { activeScreen } = useTabNavigation();
+
+    // Create a route mock for screens that need it
+    const mockRoute = useMemo(() => ({
+        params: {},
+    }), []);
+
+    // Render the appropriate screen based on active selection
+    const renderScreen = () => {
+        const screenProps = { navigation, route: mockRoute };
+
+        switch (activeScreen?.route) {
+            case ROUTES.LEADS:
+                return <LeadsScreen {...screenProps} />;
+            case ROUTES.PIPELINE:
+                return <PipelineScreen {...screenProps} />;
+            case ROUTES.TASKS:
+                return <TasksScreen {...screenProps} />;
+            case ROUTES.DASHBOARD:
+                return <DashboardScreen {...screenProps} />;
+            case ROUTES.CONTACTS:
+                return <ContactsScreen {...screenProps} />;
+            case ROUTES.REPORTS:
+                return <ReportsScreen {...screenProps} />;
+            case ROUTES.FOLLOW_UP_ENGINE:
+                return <FollowUpEngineScreen {...screenProps} />;
+            case ROUTES.PROFILE:
+                return <ProfileScreen {...screenProps} />;
+            default:
+                return <LeadsScreen {...screenProps} />;
+        }
+    };
+
     return (
-        <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-            <Icon name={name} size={ms(24)} color={color} />
+        <View style={styles.screenContainer}>
+            {renderScreen()}
         </View>
     );
 };
 
 const BottomTabNavigator = () => {
+    const navigation = useNavigation();
+    const { collapseDrawer } = useTabNavigation();
+
+    // Handle navigation from drawer - collapse drawer and navigate
+    const handleDrawerNavigate = useCallback((route) => {
+        // Drawer is already collapsed by the BottomDrawerNavigation component
+        // The screen will re-render based on context state
+    }, []);
+
     return (
-        <Tab.Navigator
-            initialRouteName={ROUTES.LEADS}
-            screenOptions={{
-                headerShown: false,
-                tabBarActiveTintColor: Colors.tabBarActive,
-                tabBarInactiveTintColor: Colors.tabBarInactive,
-                tabBarStyle: styles.tabBar,
-                tabBarLabelStyle: styles.tabBarLabel,
-                tabBarItemStyle: styles.tabBarItem,
-                tabBarHideOnKeyboard: true,
-            }}
-        >
-            <Tab.Screen
-                name={ROUTES.LEADS}
-                component={LeadsScreen}
-                options={{
-                    tabBarLabel: 'Leads',
-                    tabBarIcon: ({ focused, color }) => (
-                        <TabBarIcon
-                            name={focused ? 'account-star' : 'account-star-outline'}
-                            focused={focused}
-                            color={color}
-                        />
-                    ),
-                }}
-            />
-            <Tab.Screen
-                name={ROUTES.PIPELINE}
-                component={PipelineScreen}
-                options={{
-                    tabBarLabel: 'Pipeline',
-                    tabBarIcon: ({ focused, color }) => (
-                        <TabBarIcon
-                            name={focused ? 'chart-line' : 'chart-line-variant'}
-                            focused={focused}
-                            color={color}
-                        />
-                    ),
-                }}
-            />
-            <Tab.Screen
-                name={ROUTES.TASKS}
-                component={TasksScreen}
-                options={{
-                    tabBarLabel: 'Tasks',
-                    tabBarIcon: ({ focused, color }) => (
-                        <TabBarIcon
-                            name={focused ? 'clipboard-check' : 'clipboard-check-outline'}
-                            focused={focused}
-                            color={color}
-                        />
-                    ),
-                }}
-            />
-            <Tab.Screen
-                name={ROUTES.SETTINGS}
-                component={SettingsScreen}
-                options={{
-                    tabBarLabel: 'Settings',
-                    tabBarIcon: ({ focused, color }) => (
-                        <TabBarIcon
-                            name={focused ? 'cog' : 'cog-outline'}
-                            focused={focused}
-                            color={color}
-                        />
-                    ),
-                }}
-            />
-        </Tab.Navigator>
+        <View style={styles.container}>
+            {/* Main Content Area */}
+            <DynamicScreenContent navigation={navigation} />
+
+            {/* Bottom Drawer Navigation */}
+            <BottomDrawerNavigation onNavigate={handleDrawerNavigate} />
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    tabBar: {
-        backgroundColor: Colors.tabBarBackground,
-        borderTopWidth: 0,
-        height: Platform.OS === 'ios' ? vs(85) : vs(75),
-        paddingTop: vs(8),
-        paddingBottom: Platform.OS === 'ios' ? vs(25) : vs(10),
-        paddingHorizontal: Spacing.sm,
-        ...Shadow.lg,
+    container: {
+        flex: 1,
+        backgroundColor: Colors.background,
     },
-    tabBarLabel: {
-        fontSize: ms(11),
-        fontWeight: '500',
-        marginTop: 2,
-    },
-    tabBarItem: {
-        paddingTop: 0,
-    },
-    iconContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: ms(40),
-        height: ms(32),
-        borderRadius: BorderRadius.md,
-    },
-    iconContainerActive: {
-        backgroundColor: Colors.primaryBackground,
+    screenContainer: {
+        flex: 1,
+        // Reserve space for the collapsed drawer at the bottom
+        marginBottom: DRAWER_COLLAPSED_HEIGHT,
     },
 });
 
