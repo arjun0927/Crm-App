@@ -524,6 +524,70 @@ export const contactsAPI = {
     },
 };
 
+// ============================================
+// DEVICE TOKENS APIs (FCM Push Notifications)
+// ============================================
+
+export const deviceTokensAPI = {
+    /**
+     * Register a device token for push notifications
+     * @param {object} data - { token, deviceId, platform, deviceName }
+     */
+    register: (data) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.DEVICE_TOKENS.REGISTER, data)
+        );
+    },
+
+    /**
+     * Get all registered devices
+     */
+    getDevices: () => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.DEVICE_TOKENS.LIST)
+        );
+    },
+
+    /**
+     * Remove a device token
+     * @param {string} deviceId - Device ID to remove
+     */
+    remove: (deviceId) => {
+        return handleRequest(
+            apiClient.delete(API_ENDPOINTS.DEVICE_TOKENS.REMOVE(deviceId))
+        );
+    },
+
+    /**
+     * Remove all device tokens (logout from all devices)
+     */
+    removeAll: () => {
+        return handleRequest(
+            apiClient.delete(API_ENDPOINTS.DEVICE_TOKENS.REMOVE_ALL)
+        );
+    },
+
+    /**
+     * Toggle push notifications
+     * @param {boolean} enabled - Whether to enable push notifications
+     */
+    toggleNotifications: (enabled) => {
+        return handleRequest(
+            apiClient.patch(API_ENDPOINTS.DEVICE_TOKENS.TOGGLE, { enabled })
+        );
+    },
+
+    /**
+     * Send test notification to current device
+     * @param {object} data - { title, body, imageUrl }
+     */
+    testNotification: (data = {}) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.DEVICE_TOKENS.TEST, data)
+        );
+    },
+};
+
 // Export all APIs
 export default {
     auth: authAPI,
@@ -534,5 +598,6 @@ export default {
     notifications: notificationsAPI,
     companies: companiesAPI,
     contacts: contactsAPI,
+    deviceTokens: deviceTokensAPI,
 };
 

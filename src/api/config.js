@@ -95,6 +95,16 @@ export const API_ENDPOINTS = {
         UPDATE: (id) => `/crm-contacts/${id}`,
         DELETE: (id) => `/crm-contacts/${id}`,
     },
+
+    // Device Tokens (FCM)
+    DEVICE_TOKENS: {
+        REGISTER: '/device-tokens/register',
+        LIST: '/device-tokens',
+        REMOVE: (deviceId) => `/device-tokens/${deviceId}`,
+        REMOVE_ALL: '/device-tokens/all',
+        TOGGLE: '/device-tokens/toggle-notifications',
+        TEST: '/device-tokens/test',
+    },
 };
 
 // Request timeout (in milliseconds)

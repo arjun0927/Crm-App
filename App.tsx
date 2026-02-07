@@ -18,6 +18,7 @@ import {
   LeadsProvider,
   TasksProvider,
   TabNavigationProvider,
+  NotificationProvider,
 } from './src/context';
 import { configureGoogleSignIn } from './src/services';
 
@@ -44,13 +45,15 @@ function App(): React.JSX.Element {
       />
       <AppProvider>
         <AuthProvider>
-          <LeadsProvider>
-            <TasksProvider>
-              <TabNavigationProvider>
-                <AppNavigator />
-              </TabNavigationProvider>
-            </TasksProvider>
-          </LeadsProvider>
+          <NotificationProvider>
+            <LeadsProvider>
+              <TasksProvider>
+                <TabNavigationProvider>
+                  <AppNavigator />
+                </TabNavigationProvider>
+              </TasksProvider>
+            </LeadsProvider>
+          </NotificationProvider>
         </AuthProvider>
       </AppProvider>
       {/* Toast must be at the root level, outside of navigation */}
