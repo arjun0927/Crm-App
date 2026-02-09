@@ -5,7 +5,7 @@
 
 // Base URL for the API
 // export const API_BASE_URL = 'https://crm.ceoitbox.com/api';
-export const API_BASE_URL = 'https://gsvmdl68-3001.inc1.devtunnels.ms/api';
+export const API_BASE_URL = 'https://mxfw734d-3001.inc1.devtunnels.ms/api';
 
 // API Endpoints
 export const API_ENDPOINTS = {
