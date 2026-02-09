@@ -25,7 +25,8 @@ import { ms, vs, wp } from '../../utils/Responsive';
 import { AppText, AppButton } from '../../components';
 import { leadsAPI } from '../../api';
 import { showError } from '../../utils';
-import { useAuth } from '../../context';
+import { useAuth, useNotification } from '../../context';
+import { ROUTES } from '../../constants';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -207,6 +208,7 @@ const LeadCard = ({ lead, onPress, onEdit, onDelete }) => {
 const LeadsScreen = ({ navigation }) => {
     const nav = useNavigation();
     const { user } = useAuth();
+    const { unreadCount } = useNotification();
     const searchTimeoutRef = useRef(null);
     const currentSearchRef = useRef('');
     const isInitialLoadRef = useRef(true);
@@ -349,8 +351,18 @@ const LeadsScreen = ({ navigation }) => {
                 </AppText>
             </View>
             <View style={styles.headerActions}>
-                <TouchableOpacity style={styles.notificationButton}>
+                <TouchableOpacity
+                    style={styles.notificationButton}
+                    onPress={() => navigation.navigate(ROUTES.NOTIFICATIONS)}
+                >
                     <Icon name="bell-outline" size={ms(24)} color={Colors.textPrimary} />
+                    {unreadCount > 0 && (
+                        <View style={styles.notificationBadge}>
+                            <AppText size="xs" weight="bold" color={Colors.white}>
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </AppText>
+                        </View>
+                    )}
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.profileButton}
@@ -535,6 +547,19 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         ...Shadow.sm,
+        position: 'relative',
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        minWidth: ms(18),
+        height: ms(18),
+        borderRadius: ms(9),
+        backgroundColor: Colors.error || '#ef4444',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
     },
     profileButton: {
         width: ms(44),

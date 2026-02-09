@@ -17,6 +17,7 @@ export {
     SettingsScreen,
     ReportsScreen,
     FollowUpEngineScreen,
+    NotificationsScreen,
 } from './main';
 
 // Detail Screens
