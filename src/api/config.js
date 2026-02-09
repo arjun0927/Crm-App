@@ -5,7 +5,7 @@
 
 // Base URL for the API
 // export const API_BASE_URL = 'https://crm.ceoitbox.com/api';
-export const API_BASE_URL = 'https://mxfw734d-3001.inc1.devtunnels.ms/api';
+export const API_BASE_URL = 'https://gsvmdl68-3001.inc1.devtunnels.ms/api';
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -41,6 +41,13 @@ export const API_ENDPOINTS = {
         STATS: '/leads/stats',
         EXPORT: '/leads/export',
         IMPORT: '/leads/import',
+    },
+
+    // Follow ups
+    FOLLOW_UP: {
+        OVERDUE: '/leads/followups/overdue',
+        RULE_GENERATED: '/followup/rule-generated',
+        DUE_TODAY: '/leads/followups/due-today',
     },
 
     // Tasks

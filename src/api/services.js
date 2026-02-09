@@ -598,12 +598,49 @@ export const deviceTokensAPI = {
     },
 };
 
+// ============================================
+// FOLLOW UP APIs
+// ============================================
+
+export const followUpAPI = {
+    /**
+     * Get tasks due today
+     * @param {object} params - Query params (page, limit)
+     */
+    getDueToday: (params = {}) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.FOLLOW_UP.DUE_TODAY, { params })
+        );
+    },
+
+    /**
+     * Get overdue tasks
+     * @param {object} params - Query params (page, limit)
+     */
+    getOverdue: (params = {}) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.FOLLOW_UP.OVERDUE, { params })
+        );
+    },
+
+    /**
+     * Get rule generated tasks
+     * @param {object} params - Query params (page, limit, status)
+     */
+    getRuleGenerated: (params = {}) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.FOLLOW_UP.RULE_GENERATED, { params })
+        );
+    },
+};
+
 // Export all APIs
 export default {
     auth: authAPI,
     user: userAPI,
     leads: leadsAPI,
     tasks: tasksAPI,
+    followUp: followUpAPI,
     dashboard: dashboardAPI,
     notifications: notificationsAPI,
     companies: companiesAPI,
