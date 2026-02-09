@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- FCM Push Notification Permissions -->
@@ -28,19 +29,21 @@
         </intent-filter>
       </activity>
 
-      <!-- FCM Default Notification Channel -->
+      <!-- FCM Default Notification Channel (override library default) -->
       <meta-data
         android:name="com.google.firebase.messaging.default_notification_channel_id"
-        android:value="crm_notifications" />
+        android:value="crm_notifications"
+        tools:replace="android:value" />
 
       <!-- FCM Default Notification Icon -->
       <meta-data
         android:name="com.google.firebase.messaging.default_notification_icon"
         android:resource="@mipmap/ic_launcher" />
 
-      <!-- FCM Default Notification Color -->
+      <!-- FCM Default Notification Color (override library default) -->
       <meta-data
         android:name="com.google.firebase.messaging.default_notification_color"
-        android:resource="@color/notification_color" />
+        android:resource="@color/notification_color"
+        tools:replace="android:resource" />
     </application>
 </manifest>

@@ -30,6 +30,7 @@ export {
     notificationsAPI,
     companiesAPI,
     contactsAPI,
+    deviceTokensAPI,
 } from './services';
 export { default as API } from './services';
 

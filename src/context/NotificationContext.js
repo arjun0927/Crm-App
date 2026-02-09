@@ -13,19 +13,11 @@ import {
     deleteFCMToken,
     parseNotificationData,
 } from '../services/fcm';
-import { notificationsAPI } from '../api';
+import { deviceTokensAPI } from '../api';
 import { useAuth } from './AuthContext';
 
 // Create the context
 const NotificationContext = createContext(null);
-
-// API endpoint for device tokens
-const DEVICE_TOKEN_ENDPOINTS = {
-    REGISTER: '/device-tokens/register',
-    REMOVE: (deviceId) => `/device-tokens/${deviceId}`,
-    TOGGLE: '/device-tokens/toggle-notifications',
-    GET_DEVICES: '/device-tokens',
-};
 
 /**
  * NotificationProvider Component
@@ -56,27 +48,18 @@ export const NotificationProvider = ({ children }) => {
         }
 
         try {
-            const response = await fetch(`${getApiBaseUrl()}${DEVICE_TOKEN_ENDPOINTS.REGISTER}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`,
-                },
-                body: JSON.stringify({
-                    token,
-                    deviceId: devId,
-                    platform: Platform.OS,
-                    deviceName: `${Platform.OS} ${Platform.Version}`,
-                }),
+            const response = await deviceTokensAPI.register({
+                token,
+                deviceId: devId,
+                platform: Platform.OS,
+                deviceName: `${Platform.OS} ${Platform.Version}`,
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
+            if (response.success) {
                 console.log('[Notification] Device token registered successfully');
                 return true;
             } else {
-                console.error('[Notification] Failed to register device token:', data.message);
+                console.error('[Notification] Failed to register device token:', response.error);
                 return false;
             }
         } catch (error) {
@@ -94,17 +77,8 @@ export const NotificationProvider = ({ children }) => {
         }
 
         try {
-            const response = await fetch(
-                `${getApiBaseUrl()}${DEVICE_TOKEN_ENDPOINTS.REMOVE(deviceId)}`,
-                {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                    },
-                }
-            );
-
-            if (response.ok) {
+            const response = await deviceTokensAPI.remove(deviceId);
+            if (response.success) {
                 console.log('[Notification] Device token removed successfully');
                 return true;
             }
@@ -233,19 +207,8 @@ export const NotificationProvider = ({ children }) => {
         }
 
         try {
-            const response = await fetch(
-                `${getApiBaseUrl()}${DEVICE_TOKEN_ENDPOINTS.TOGGLE}`,
-                {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`,
-                    },
-                    body: JSON.stringify({ enabled }),
-                }
-            );
-
-            if (response.ok) {
+            const response = await deviceTokensAPI.toggleNotifications(enabled);
+            if (response.success) {
                 setPushEnabled(enabled);
                 console.log(`[Notification] Push notifications ${enabled ? 'enabled' : 'disabled'}`);
                 return true;
@@ -380,16 +343,6 @@ export const useNotification = () => {
         throw new Error('useNotification must be used within a NotificationProvider');
     }
     return context;
-};
-
-/**
- * Helper function to get API base URL
- * Import this from your API config if available
- */
-const getApiBaseUrl = () => {
-    // You should import this from your API config
-    // return API_BASE_URL;
-    return 'https://gsvmdl68-3001.inc1.devtunnels.ms/api';
 };
 
 export default NotificationContext;
