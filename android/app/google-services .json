@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1018992744135",
+    "project_id": "cbxcrm-acb35",
+    "storage_bucket": "cbxcrm-acb35.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1018992744135:android:9818b86bfe0e4ee22d50e2",
+        "android_client_info": {
+          "package_name": "com.cbxcrm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBzh8h1h6_Y0athdzDhTVRECXrFhLDoyA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
