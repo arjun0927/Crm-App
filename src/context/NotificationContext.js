@@ -13,7 +13,7 @@ import {
     deleteFCMToken,
     parseNotificationData,
 } from '../services/fcm';
-import { deviceTokensAPI } from '../api';
+import { deviceTokensAPI, notificationsAPI } from '../api';
 import { useAuth } from './AuthContext';
 
 // Create the context
@@ -33,6 +33,9 @@ export const NotificationProvider = ({ children }) => {
     const [pushEnabled, setPushEnabled] = useState(true);
     const [lastNotification, setLastNotification] = useState(null);
     const [notificationCount, setNotificationCount] = useState(0);
+    /** Live list of notifications (from API + FCM foreground). Used for in-app list and badge. */
+    const [notifications, setNotifications] = useState([]);
+    const [notificationsLoading, setNotificationsLoading] = useState(false);
     
     // Refs
     const unsubscribeRef = useRef(null);
@@ -99,6 +102,23 @@ export const NotificationProvider = ({ children }) => {
             setLastNotification(notification);
             setNotificationCount(prev => prev + 1);
 
+            // Add to live list for in-app dropdown (avoid duplicate by notificationId)
+            const id = notification.notificationId || `fcm_${Date.now()}`;
+            setNotifications(prev => {
+                if (prev.some(n => n._id === id)) return prev;
+                return [{
+                    _id: id,
+                    title: notification.title,
+                    description: notification.body,
+                    type: notification.type || 'announcement',
+                    createdAt: new Date().toISOString(),
+                    read: false,
+                    entityId: notification.entityId,
+                    priority: notification.priority,
+                    imageUrl: notification.imageUrl,
+                }, ...prev];
+            });
+
             // Show toast notification
             Toast.show({
                 type: notification.priority === 'urgent' ? 'error' : 
@@ -107,7 +127,6 @@ export const NotificationProvider = ({ children }) => {
                 text2: notification.body,
                 visibilityTime: 5000,
                 onPress: () => {
-                    // Handle notification tap
                     handleNotificationPress(notification);
                 },
             });
@@ -240,6 +259,8 @@ export const NotificationProvider = ({ children }) => {
             // Reset state
             setFcmToken(null);
             setIsInitialized(false);
+            setNotifications([]);
+            setNotificationCount(0);
             registrationAttemptedRef.current = false;
             
             console.log('[Notification] Cleanup completed');
@@ -253,6 +274,57 @@ export const NotificationProvider = ({ children }) => {
      */
     const clearNotificationCount = useCallback(() => {
         setNotificationCount(0);
+    }, []);
+
+    /**
+     * Fetch notifications from API (for in-app list and badge)
+     */
+    const fetchNotifications = useCallback(async () => {
+        if (!authToken) return;
+        setNotificationsLoading(true);
+        try {
+            const response = await notificationsAPI.getMy({ limit: 50 });
+            if (response.success && response.data) {
+                const list = response.data.notifications || [];
+                const unread = response.data.unreadCount ?? list.filter(n => !n.read).length;
+                setNotifications(list);
+                setNotificationCount(unread);
+            }
+        } catch (e) {
+            console.error('[Notification] fetchNotifications error:', e);
+        } finally {
+            setNotificationsLoading(false);
+        }
+    }, [authToken]);
+
+    /**
+     * Mark one notification as read
+     */
+    const markNotificationAsRead = useCallback(async (id) => {
+        try {
+            const res = await notificationsAPI.markAsRead(id);
+            if (res.success) {
+                setNotifications(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
+                setNotificationCount(prev => Math.max(0, prev - 1));
+            }
+        } catch (e) {
+            console.error('[Notification] markAsRead error:', e);
+        }
+    }, []);
+
+    /**
+     * Mark all notifications as read
+     */
+    const markAllNotificationsAsRead = useCallback(async () => {
+        try {
+            const res = await notificationsAPI.markAllAsRead();
+            if (res.success) {
+                setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                setNotificationCount(0);
+            }
+        } catch (e) {
+            console.error('[Notification] markAllAsRead error:', e);
+        }
     }, []);
 
     /**
@@ -286,8 +358,8 @@ export const NotificationProvider = ({ children }) => {
                 appStateRef.current.match(/inactive|background/) &&
                 nextAppState === 'active'
             ) {
-                // App has come to foreground - refresh token if needed
                 refreshToken();
+                fetchNotifications();
             }
             appStateRef.current = nextAppState;
         });
@@ -295,7 +367,7 @@ export const NotificationProvider = ({ children }) => {
         return () => {
             subscription.remove();
         };
-    }, [refreshToken]);
+    }, [refreshToken, fetchNotifications]);
 
     // Cleanup on unmount or logout
     useEffect(() => {
@@ -314,7 +386,9 @@ export const NotificationProvider = ({ children }) => {
         pushEnabled,
         lastNotification,
         notificationCount,
-        
+        notifications,
+        notificationsLoading,
+        unreadCount: notificationCount,
         // Methods
         initializeNotifications,
         registerDeviceToken,
@@ -324,6 +398,9 @@ export const NotificationProvider = ({ children }) => {
         clearNotificationCount,
         refreshToken,
         handleNotificationPress,
+        fetchNotifications,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
     };
 
     return (

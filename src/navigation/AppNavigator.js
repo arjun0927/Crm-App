@@ -26,6 +26,7 @@ import {
     ContactsScreen,
     ReportsScreen,
     FollowUpEngineScreen,
+    NotificationsScreen,
 } from '../screens';
 // Import company screens
 import EditCompanyScreen from '../screens/main/EditCompanyScreen';
@@ -185,6 +186,11 @@ const AppNavigator = () => {
                 <Stack.Screen
                     name={ROUTES.PROFILE}
                     component={ProfileScreen}
+                />
+
+                <Stack.Screen
+                    name={ROUTES.NOTIFICATIONS}
+                    component={NotificationsScreen}
                 />
             </Stack.Navigator>
         </NavigationContainer>

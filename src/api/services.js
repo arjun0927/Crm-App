@@ -371,12 +371,22 @@ export const dashboardAPI = {
 
 export const notificationsAPI = {
     /**
-     * Get all notifications
+     * Get my notifications (current user)
+     * @param {object} params - Query params (page, limit, unreadOnly, type)
+     */
+    getMy: (params = {}) => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.NOTIFICATIONS.MY, { params })
+        );
+    },
+
+    /**
+     * Get all notifications (alias for list)
      * @param {object} params - Query params (page, limit, unread, etc.)
      */
     getAll: (params = {}) => {
         return handleRequest(
-            apiClient.get(API_ENDPOINTS.NOTIFICATIONS.LIST, { params })
+            apiClient.get(API_ENDPOINTS.NOTIFICATIONS.MY, { params })
         );
     },
 

@@ -64,6 +64,7 @@ export const ROUTES = {
     SETTINGS: 'Settings',
     REPORTS: 'Reports',
     FOLLOW_UP_ENGINE: 'FollowUpEngine',
+    NOTIFICATIONS: 'Notifications',
 };
 
 

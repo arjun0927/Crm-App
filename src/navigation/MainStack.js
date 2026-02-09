@@ -18,6 +18,7 @@ import {
     AddCompanyScreen,
     ReportsScreen,
     FollowUpEngineScreen,
+    NotificationsScreen,
 } from '../screens';
 import EditCompanyScreen from '../screens/main/EditCompanyScreen';
 
@@ -114,6 +115,12 @@ const MainStack = () => {
             <Stack.Screen
                 name={ROUTES.PROFILE}
                 component={ProfileScreen}
+            />
+
+            {/* Notifications Screen (live list, from API + FCM) */}
+            <Stack.Screen
+                name={ROUTES.NOTIFICATIONS}
+                component={NotificationsScreen}
             />
         </Stack.Navigator>
     );
