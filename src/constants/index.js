@@ -65,6 +65,7 @@ export const ROUTES = {
     REPORTS: 'Reports',
     FOLLOW_UP_ENGINE: 'FollowUpEngine',
     NOTIFICATIONS: 'Notifications',
+    AI_ASSISTANT: 'AIAssistant',
 };
 
 

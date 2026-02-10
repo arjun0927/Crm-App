@@ -22,6 +22,12 @@ const CommonHeader = ({ navigation }) => {
             </View>
             <View style={styles.headerActions}>
                 <TouchableOpacity
+                    style={styles.aiButton}
+                    onPress={() => navigation.navigate(ROUTES.AI_ASSISTANT)}
+                >
+                    <Icon name="creation" size={ms(24)} color={Colors.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity
                     style={styles.notificationButton}
                     onPress={() => navigation.navigate(ROUTES.NOTIFICATIONS)}
                 >
@@ -69,6 +75,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         ...Shadow.sm,
         position: 'relative',
+    },
+    aiButton: {
+        width: ms(44),
+        height: ms(44),
+        borderRadius: BorderRadius.round,
+        backgroundColor: Colors.white,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...Shadow.sm,
     },
     notificationBadge: {
         position: 'absolute',

@@ -113,6 +113,16 @@ export const API_ENDPOINTS = {
         TOGGLE: '/device-tokens/toggle-notifications',
         TEST: '/device-tokens/test',
     },
+
+    // AI Assistant
+    AI: {
+        SESSIONS: '/ai/chat/sessions',
+        SESSION_HISTORY: (sessionId) => `/ai/chat/history/${sessionId}`,
+        HISTORY: '/ai/chat/history',
+        MESSAGE: '/ai/chat/message',
+        PLAN_STATUS: '/ai/plan-status',
+        DELETE_SESSION: (sessionId) => `/ai/chat/sessions/${sessionId}`,
+    },
 };
 
 // Request timeout (in milliseconds)

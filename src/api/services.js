@@ -634,6 +634,84 @@ export const followUpAPI = {
     },
 };
 
+// ============================================
+// AI ASSISTANT APIs
+// ============================================
+
+export const aiAPI = {
+    /**
+     * Get all chat sessions
+     */
+    getSessions: () => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.AI.SESSIONS)
+        );
+    },
+
+    /**
+     * Create new chat session
+     */
+    createSession: () => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.AI.SESSIONS)
+        );
+    },
+
+    /**
+     * Delete chat session
+     * @param {string} sessionId 
+     */
+    deleteSession: (sessionId) => {
+        return handleRequest(
+            apiClient.delete(API_ENDPOINTS.AI.DELETE_SESSION(sessionId))
+        );
+    },
+
+    /**
+     * Get chat history
+     * @param {string} sessionId 
+     * @param {number} limit 
+     * @param {number} skip 
+     */
+    getHistory: (sessionId, limit = 100, skip = 0) => {
+        const url = sessionId
+            ? API_ENDPOINTS.AI.SESSION_HISTORY(sessionId)
+            : API_ENDPOINTS.AI.HISTORY;
+        return handleRequest(
+            apiClient.get(url, { params: { limit, skip } })
+        );
+    },
+
+    /**
+     * Send message (Standard - for now)
+     * @param {string} content 
+     * @param {string} sessionId 
+     */
+    sendMessage: (content, sessionId) => {
+        return handleRequest(
+            apiClient.post(API_ENDPOINTS.AI.MESSAGE, { content, sessionId })
+        );
+    },
+
+    /**
+     * Clear all history
+     */
+    clearHistory: () => {
+        return handleRequest(
+            apiClient.delete(API_ENDPOINTS.AI.HISTORY)
+        );
+    },
+
+    /**
+     * Get plan status
+     */
+    getPlanStatus: () => {
+        return handleRequest(
+            apiClient.get(API_ENDPOINTS.AI.PLAN_STATUS)
+        );
+    },
+};
+
 // Export all APIs
 export default {
     auth: authAPI,
@@ -646,5 +724,6 @@ export default {
     companies: companiesAPI,
     contacts: contactsAPI,
     deviceTokens: deviceTokensAPI,
+    ai: aiAPI,
 };
 

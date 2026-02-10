@@ -151,77 +151,151 @@ const LeadCard = ({ lead, onPress }) => {
 };
 
 const FollowUpEngineScreen = ({ navigation }) => {
-    const [activeTab, setActiveTab] = useState(TAB_OVERDUE); // Default to Overdue as it usually has data
+    const [activeTab, setActiveTab] = useState(TAB_DUE_TODAY);
     const [data, setData] = useState({
         [TAB_DUE_TODAY]: [],
         [TAB_OVERDUE]: [],
         [TAB_RULE_GENERATED]: []
+    });
+    // Store pagination info: currentPage and totalItems (or totalPages)
+    const [pagination, setPagination] = useState({
+        [TAB_DUE_TODAY]: { page: 1, total: 0, hasMore: true },
+        [TAB_OVERDUE]: { page: 1, total: 0, hasMore: true },
+        [TAB_RULE_GENERATED]: { page: 1, total: 0, hasMore: true }
     });
     const [loading, setLoading] = useState({
         [TAB_DUE_TODAY]: true,
         [TAB_OVERDUE]: true,
         [TAB_RULE_GENERATED]: true
     });
+    const [isFetchingMore, setIsFetchingMore] = useState({
+        [TAB_DUE_TODAY]: false,
+        [TAB_OVERDUE]: false,
+        [TAB_RULE_GENERATED]: false
+    });
     const [refreshing, setRefreshing] = useState(false);
 
-    const fetchAllData = async () => {
+    // Map tabs to API calls
+    const API_METHODS = {
+        [TAB_DUE_TODAY]: (params) => API.followUp.getDueToday(params),
+        [TAB_OVERDUE]: (params) => API.followUp.getOverdue(params),
+        [TAB_RULE_GENERATED]: (params) => API.followUp.getRuleGenerated({ ...params, status: 'open' })
+    };
+
+    // Helper to get list from data
+    const getListData = (tabData) => {
+        if (!tabData) return [];
+        if (Array.isArray(tabData)) return tabData;
+        return tabData.data || tabData.leads || [];
+    };
+
+    const fetchTabData = async (tab, page = 1, isLoadMore = false) => {
         try {
-            const [dueTodayRes, overdueRes, ruleGeneratedRes] = await Promise.all([
-                API.followUp.getDueToday({ page: 1, limit: 10 }),
-                API.followUp.getOverdue({ page: 1, limit: 10 }),
-                API.followUp.getRuleGenerated({ status: 'open', page: 1, limit: 10 })
-            ]);
+            if (isLoadMore) {
+                setIsFetchingMore(prev => ({ ...prev, [tab]: true }));
+            } else {
+                setLoading(prev => ({ ...prev, [tab]: true }));
+            }
 
-            console.log("dueTodayRes", dueTodayRes);
-            console.log("overdueRes", overdueRes);
-            console.log("ruleGeneratedRes", ruleGeneratedRes);
+            const apiCall = API_METHODS[tab];
+            const response = await apiCall({ page, limit: 10 });
 
-            setData(prev => ({
-                [TAB_DUE_TODAY]: dueTodayRes.success ? (dueTodayRes.data || []) : [],
-                [TAB_OVERDUE]: overdueRes.success ? (overdueRes.data || []) : [],
-                [TAB_RULE_GENERATED]: ruleGeneratedRes.success ? (ruleGeneratedRes.data || []) : []
-            }));
+            if (response.success) {
+                const responseData = response.data || {};
+                const newList = getListData(responseData);
+                // Try to extract total items from common pagination paths
+                const totalItems = responseData.pagination?.totalItems || responseData.total || responseData.count || 0;
+
+                setData(prev => {
+                    if (isLoadMore) {
+                        const existingList = getListData(prev[tab]);
+
+                        // Filter out duplicates from newList based on id or _id
+                        const existingIds = new Set(existingList.map(item => item._id || item.id));
+                        const uniqueNewList = newList.filter(item => {
+                            const id = item._id || item.id;
+                            // If no ID, we can't check for duplicates easily, so allow it (keyExtractor handles it)
+                            // If ID exists, check if it's already in the list
+                            return !id || !existingIds.has(id);
+                        });
+
+                        // Merge lists
+                        const mergedList = [...existingList, ...uniqueNewList];
+                        // Preserve structure if it's an object, or just return array
+                        return {
+                            ...prev,
+                            [tab]: Array.isArray(prev[tab]) ? mergedList : { ...prev[tab], data: mergedList }
+                        };
+                    } else {
+                        return {
+                            ...prev,
+                            [tab]: responseData
+                        };
+                    }
+                });
+
+                setPagination(prev => ({
+                    ...prev,
+                    [tab]: {
+                        page,
+                        total: totalItems,
+                        hasMore: newList.length === 10 // Assuming limit is 10
+                    }
+                }));
+            }
         } catch (error) {
-            console.error('Error fetching follow-up data:', error);
+            console.error(`Error fetching data for ${tab}:`, error);
         } finally {
-            setLoading({
-                [TAB_DUE_TODAY]: false,
-                [TAB_OVERDUE]: false,
-                [TAB_RULE_GENERATED]: false
-            });
+            if (isLoadMore) {
+                setIsFetchingMore(prev => ({ ...prev, [tab]: false }));
+            } else {
+                setLoading(prev => ({ ...prev, [tab]: false }));
+            }
         }
     };
 
-    console.log("data", data);
+    const fetchAllData = async () => {
+        // Reset pagination state for all tabs
+        setPagination({
+            [TAB_DUE_TODAY]: { page: 1, total: 0, hasMore: true },
+            [TAB_OVERDUE]: { page: 1, total: 0, hasMore: true },
+            [TAB_RULE_GENERATED]: { page: 1, total: 0, hasMore: true }
+        });
 
+        // Fetch page 1 for all tabs
+        await Promise.all([
+            fetchTabData(TAB_DUE_TODAY, 1, false),
+            fetchTabData(TAB_OVERDUE, 1, false),
+            fetchTabData(TAB_RULE_GENERATED, 1, false)
+        ]);
+    };
 
     // Use focus effect to fetch data when screen is focused
     useFocusEffect(
         useCallback(() => {
-            setLoading({
-                [TAB_DUE_TODAY]: true,
-                [TAB_OVERDUE]: true,
-                [TAB_RULE_GENERATED]: true
-            });
             fetchAllData();
         }, [])
     );
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        setLoading({
-            [TAB_DUE_TODAY]: true,
-            [TAB_OVERDUE]: true,
-            [TAB_RULE_GENERATED]: true
-        });
         fetchAllData().then(() => setRefreshing(false));
     }, []);
 
-    // Helper to get list from data (handles array or paginated object)
-    const getListData = (tabData) => {
-        if (!tabData) return [];
-        if (Array.isArray(tabData)) return tabData;
-        return tabData.data || tabData.leads || [];
+    const handleLoadMore = () => {
+        if (isFetchingMore[activeTab] || loading[activeTab] || !pagination[activeTab].hasMore) return;
+
+        const nextPage = pagination[activeTab].page + 1;
+        fetchTabData(activeTab, nextPage, true);
+    };
+
+    const renderFooter = () => {
+        if (!isFetchingMore[activeTab]) return null;
+        return (
+            <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+            </View>
+        );
     };
 
     const renderTabs = () => (
@@ -235,9 +309,9 @@ const FollowUpEngineScreen = ({ navigation }) => {
                 <AppText size="xs" weight={activeTab === TAB_DUE_TODAY ? 'semiBold' : 'normal'} color={activeTab === TAB_DUE_TODAY ? Colors.primary : Colors.textMuted} style={styles.tabLabel}>
                     Due Today
                 </AppText>
-                {getListData(data[TAB_DUE_TODAY]).length > 0 && (
+                {pagination[TAB_DUE_TODAY].total > 0 && (
                     <View style={styles.tabBadge}>
-                        <AppText size="xs" weight="bold" color={Colors.white}>{data?.due_today?.pagination?.totalItems}</AppText>
+                        <AppText size="xs" weight="bold" color={Colors.white}>{pagination[TAB_DUE_TODAY].total}</AppText>
                     </View>
                 )}
             </TouchableOpacity>
@@ -251,9 +325,9 @@ const FollowUpEngineScreen = ({ navigation }) => {
                 <AppText size="xs" weight={activeTab === TAB_OVERDUE ? 'semiBold' : 'normal'} color={activeTab === TAB_OVERDUE ? Colors.primary : Colors.textMuted} style={styles.tabLabel}>
                     Overdue
                 </AppText>
-                {getListData(data[TAB_OVERDUE]).length > 0 && (
+                {pagination[TAB_OVERDUE].total > 0 && (
                     <View style={styles.tabBadge}>
-                        <AppText size="xs" weight="bold" color={Colors.white}>{data?.overdue?.pagination?.totalItems}</AppText>
+                        <AppText size="xs" weight="bold" color={Colors.white}>{pagination[TAB_OVERDUE].total}</AppText>
                     </View>
                 )}
             </TouchableOpacity>
@@ -267,9 +341,9 @@ const FollowUpEngineScreen = ({ navigation }) => {
                 <AppText size="xs" weight={activeTab === TAB_RULE_GENERATED ? 'semiBold' : 'normal'} color={activeTab === TAB_RULE_GENERATED ? Colors.primary : Colors.textMuted} style={styles.tabLabel}>
                     Rule-Generated
                 </AppText>
-                {getListData(data[TAB_RULE_GENERATED]).length > 0 && (
+                {pagination[TAB_RULE_GENERATED].total > 0 && (
                     <View style={styles.tabBadge}>
-                        <AppText size="xs" weight="bold" color={Colors.white}>{data?.rule_generated?.pagination?.totalItems}</AppText>
+                        <AppText size="xs" weight="bold" color={Colors.white}>{pagination[TAB_RULE_GENERATED].total}</AppText>
                     </View>
                 )}
             </TouchableOpacity>
@@ -282,9 +356,6 @@ const FollowUpEngineScreen = ({ navigation }) => {
         return (
             <View style={styles.emptyState}>
                 <Icon name="clipboard-check-outline" size={ms(60)} color={Colors.textMuted} />
-                {/* <AppText size="lg" weight="semiBold" color={Colors.textSecondary} style={styles.emptyTitle}>
-                    No Follow-ups Found
-                </AppText> */}
                 <AppText size="lg" weight="semiBold" color={Colors.textMuted} style={styles.emptySubtitle}>
                     There are no {activeTab.replace('_', ' ')} items.
                 </AppText>
@@ -305,7 +376,7 @@ const FollowUpEngineScreen = ({ navigation }) => {
             <CommonHeader navigation={navigation} />
             {renderTabs()}
 
-            {loading[activeTab] && currentList.length === 0 ? (
+            {loading[activeTab] && !refreshing && !isFetchingMore ? (
                 <View style={styles.centered}>
                     <ActivityIndicator size="large" color={Colors.primary} />
                 </View>
@@ -320,6 +391,9 @@ const FollowUpEngineScreen = ({ navigation }) => {
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
                     }
                     showsVerticalScrollIndicator={false}
+                    onEndReached={handleLoadMore}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={renderFooter}
                 />
             )}
         </SafeAreaView>
@@ -450,6 +524,11 @@ const styles = StyleSheet.create({
     emptySubtitle: {
         marginTop: vs(8),
         textAlign: 'center',
+    },
+    footerLoader: {
+        paddingVertical: Spacing.md,
+        alignItems: 'center',
+        marginBottom: Spacing.xl,
     },
 });
 

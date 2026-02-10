@@ -18,6 +18,7 @@ export {
     ReportsScreen,
     FollowUpEngineScreen,
     NotificationsScreen,
+    AIAssistantScreen,
 } from './main';
 
 // Detail Screens

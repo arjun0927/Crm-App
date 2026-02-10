@@ -122,6 +122,16 @@ const MainStack = () => {
                 name={ROUTES.NOTIFICATIONS}
                 component={NotificationsScreen}
             />
+
+            {/* AI Assistant Screen */}
+            <Stack.Screen
+                name={ROUTES.AI_ASSISTANT}
+                component={AIAssistantScreen}
+                options={{
+                    animation: 'slide_from_bottom',
+                    presentation: 'fullScreenModal',
+                }}
+            />
         </Stack.Navigator>
     );
 };
