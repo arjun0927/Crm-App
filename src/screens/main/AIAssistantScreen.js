@@ -10,7 +10,8 @@ import {
     FlatList,
     Modal,
     ActivityIndicator,
-    Alert
+    Alert,
+    Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -20,9 +21,27 @@ import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs, wp } from '../../utils/Responsive';
 import { aiAPI } from '../../api/services';
 import ThinkingState from '../../components/ThinkingState';
+import Markdown from 'react-native-markdown-display';
 
 const THEME_COLOR = '#22c55e'; // Green color from screenshot
 const BG_COLOR = '#f8fafc'; // Light gray background
+
+const markdownStyles = {
+    body: { color: Colors.textPrimary, fontSize: ms(14), lineHeight: 20 },
+    paragraph: { marginTop: 0, marginBottom: 8 },
+    text: { color: Colors.textPrimary, fontSize: ms(14) },
+    code_inline: { backgroundColor: 'rgba(0,0,0,0.06)', color: Colors.textPrimary, fontSize: ms(13), paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4 },
+    code_block: { backgroundColor: 'rgba(0,0,0,0.06)', color: Colors.textPrimary, fontSize: ms(12), padding: 10, borderRadius: 6, marginVertical: 6 },
+    link: { color: THEME_COLOR },
+    heading1: { fontSize: ms(18), color: Colors.textPrimary, marginVertical: 6 },
+    heading2: { fontSize: ms(16), color: Colors.textPrimary, marginVertical: 4 },
+    heading3: { fontSize: ms(15), color: Colors.textPrimary, marginVertical: 4 },
+    strong: { color: Colors.textPrimary },
+    list_item: { marginVertical: 2 },
+    table: { marginVertical: 6, borderWidth: 1, borderColor: Colors.border, borderRadius: 4 },
+    th: { padding: 8, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.background },
+    td: { padding: 8, borderWidth: 1, borderColor: Colors.border },
+};
 
 const AIAssistantScreen = ({ navigation }) => {
     const [messages, setMessages] = useState([]);
@@ -110,90 +129,56 @@ const AIAssistantScreen = ({ navigation }) => {
             createdAt: new Date().toISOString()
         };
 
-        setMessages(prev => [...prev, userMsg]);
+        const tempAiMsgId = `streaming-${Date.now()}`;
+        const aiPlaceholder = {
+            id: tempAiMsgId,
+            text: '',
+            sender: 'ai',
+            createdAt: new Date().toISOString()
+        };
+
+        setMessages(prev => [...prev, userMsg, aiPlaceholder]);
         setInputText('');
         setIsLoading(true);
 
-        // Scroll to bottom
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
         try {
-            // For now, using standard sendMessage. 
-            // TODO: Implement streaming if creating a custom fetch wrapper mostly for text/event-stream
-            const response = await aiAPI.sendMessage(text, currentSessionId);
-
-            setIsLoading(false);
-
-            if (response.success) {
-                // If session ID changed or was null, update it
-                // API might return session info or we check headers/data
-
-                // Assuming response.data contains the answer string or object
-                // Usually it returns { content: "...", ... } or just the stream end result
-
-                // Check response structure from web API service inspection: 
-                // It just returns response.json(). 
-                // If streaming was used there, it used reader. 
-                // Since we used the non-streaming fallbacks or just a POST, let's assume it returns { content: "answer" } or similar.
-                // Actually, looks like `sendMessageStream` was used in web.
-                // If I use a simple POST to a streaming endpoint without a reader, it might wait until end or fail.
-                // Let's assume for this step it waits.
-
-                // HACK: The web uses `sendMessageStream`. If the backend ONLY supports streaming, a standard fetch might still get the whole body at once if we await `.json()`.
-                // However, `.json()` on a stream often works if the server closes connection properly.
-
-                let aiText = '';
-                if (typeof response.data === 'string') {
-                    aiText = response.data;
-                } else if (response.data && response.data.content) {
-                    aiText = response.data.content;
-                } else if (response.data && response.data.assistantMessage) { // Common pattern
-                    aiText = response.data.assistantMessage.content;
-                } else {
-                    aiText = "Received response but couldn't parse it.";
-                    console.log('Unknown response format:', response.data);
+            await aiAPI.sendMessageStreamXHR(text.trim(), currentSessionId, {
+                onChunk: (fullText) => {
+                    setMessages(prev => {
+                        const next = [...prev];
+                        const last = next[next.length - 1];
+                        if (last && last.sender === 'ai') next[next.length - 1] = { ...last, text: fullText };
+                        return next;
+                    });
+                    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+                },
+                onInit: (sessionId) => setCurrentSessionId(sessionId),
+                onError: (message) => {
+                    setMessages(prev => {
+                        const next = [...prev];
+                        const last = next[next.length - 1];
+                        if (last && last.sender === 'ai') next[next.length - 1] = { ...last, text: message || 'An error occurred.', isError: true };
+                        return next;
+                    });
+                },
+                onDone: () => {
+                    fetchPlanStatus();
+                    fetchSessions();
                 }
-
-                const aiMsg = {
-                    id: (Date.now() + 1).toString(),
-                    text: aiText,
-                    sender: 'ai',
-                    createdAt: new Date().toISOString()
-                };
-                setMessages(prev => [...prev, aiMsg]);
-
-                // Update session ID if returned
-                if (response.data?.sessionId) {
-                    setCurrentSessionId(response.data.sessionId);
-                } else if (response.data?.session?._id) {
-                    setCurrentSessionId(response.data.session._id);
-                }
-
-                // Refresh credits
-                fetchPlanStatus();
-                // Refresh sessions if this was a new chat or just to be sure
-                fetchSessions();
-            } else {
-                const errorMsg = {
-                    id: (Date.now() + 1).toString(),
-                    text: "Sorry, I encountered an error. Please try again.",
-                    sender: 'ai',
-                    isError: true
-                };
-                setMessages(prev => [...prev, errorMsg]);
-            }
+            });
         } catch (error) {
+            setMessages(prev => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last && last.sender === 'ai') next[next.length - 1] = { ...last, text: error.message || 'Network error. Please check your connection.', isError: true };
+                return next;
+            });
+        } finally {
             setIsLoading(false);
-            const errorMsg = {
-                id: (Date.now() + 1).toString(),
-                text: "Network error. Please check your connection.",
-                sender: 'ai',
-                isError: true
-            };
-            setMessages(prev => [...prev, errorMsg]);
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
         }
-
-        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     };
 
     const handleDeleteSession = async (sessionId) => {
@@ -288,6 +273,7 @@ const AIAssistantScreen = ({ navigation }) => {
 
     const renderMessage = ({ item }) => {
         const isUser = item.sender === 'user';
+        const isAiEmpty = !isUser && (item.text === '' || item.text === undefined);
         return (
             <View style={[
                 styles.messageRow,
@@ -302,13 +288,24 @@ const AIAssistantScreen = ({ navigation }) => {
                     styles.messageBubble,
                     isUser ? styles.messageBubbleUser : styles.messageBubbleAi
                 ]}>
-                    <AppText
-                        size={14}
-                        color={isUser ? Colors.white : Colors.textPrimary}
-                        style={{ lineHeight: 20 }}
-                    >
-                        {item.text}
-                    </AppText>
+                    {isAiEmpty ? (
+                        <ThinkingState />
+                    ) : item.isError ? (
+                        <AppText size={14} color={Colors.error} style={{ lineHeight: 20 }}>
+                            {item.text}
+                        </AppText>
+                    ) : isUser ? (
+                        <AppText size={14} color={Colors.white} style={{ lineHeight: 20 }}>
+                            {item.text}
+                        </AppText>
+                    ) : (
+                        <Markdown
+                            style={markdownStyles}
+                            onLinkPress={(url) => { if (url) Linking.openURL(url); return false; }}
+                        >
+                            {item.text}
+                        </Markdown>
+                    )}
                 </View>
             </View>
         );
@@ -362,11 +359,6 @@ const AIAssistantScreen = ({ navigation }) => {
                         keyExtractor={item => item.id}
                         contentContainerStyle={styles.chatListContent}
                         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                        ListFooterComponent={isLoading ? (
-                            <View style={styles.thinkingContainer}>
-                                <ThinkingState />
-                            </View>
-                        ) : null}
                     />
                 )}
 

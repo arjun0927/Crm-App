@@ -4,7 +4,8 @@
  */
 
 import apiClient, { getErrorMessage, isNetworkError, isAuthError } from './interceptor';
-import { API_ENDPOINTS } from './config';
+import { API_BASE_URL, API_ENDPOINTS } from './config';
+import { getToken } from '../storage';
 
 /**
  * Generic API request handler
@@ -683,7 +684,7 @@ export const aiAPI = {
     },
 
     /**
-     * Send message (Standard - for now)
+     * Send message (Standard - non-streaming fallback)
      * @param {string} content 
      * @param {string} sessionId 
      */
@@ -691,6 +692,103 @@ export const aiAPI = {
         return handleRequest(
             apiClient.post(API_ENDPOINTS.AI.MESSAGE, { content, sessionId })
         );
+    },
+
+    /**
+     * Send message and stream SSE via XMLHttpRequest (works in React Native where fetch.body is undefined).
+     * Calls onChunk(fullText), onInit(sessionId), onError(message), onDone() as events arrive.
+     * @param {string} content 
+     * @param {string|null} sessionId 
+     * @param {{ onChunk: (fullText: string) => void, onInit?: (sessionId: string) => void, onError?: (message: string) => void, onDone?: () => void }} callbacks 
+     * @returns {Promise<{ ok: boolean, status: number }>}
+     */
+    sendMessageStreamXHR: (content, sessionId, callbacks) => {
+        return new Promise(async (resolve, reject) => {
+            const token = await getToken();
+            const url = `${API_BASE_URL}${API_ENDPOINTS.AI.MESSAGE}`;
+            const xhr = new XMLHttpRequest();
+            let processedUpTo = 0;
+            let fullText = '';
+
+            xhr.open('POST', url);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+            xhr.onprogress = () => {
+                const text = xhr.responseText || '';
+                const rest = text.slice(processedUpTo);
+                const parts = rest.split('\n\n');
+                const incompleteLen = (parts[parts.length - 1] || '').length + (parts.length > 1 ? 2 : 0);
+                const toProcess = parts.length > 1 ? parts.slice(0, -1) : (rest.endsWith('\n\n') ? parts : []);
+
+                for (const part of toProcess) {
+                    if (!part.trim()) continue;
+                    const eventMatch = part.match(/^event: (.*)$/m);
+                    const dataMatch = part.match(/^data: (.*)$/m);
+                    const event = eventMatch ? eventMatch[1].trim() : 'message';
+                    const dataStr = dataMatch ? dataMatch[1].trim() : '';
+                    if (!dataStr) continue;
+                    try {
+                        const data = JSON.parse(dataStr);
+                        if (event === 'error') {
+                            callbacks.onError?.(data.message || 'An error occurred.');
+                            return;
+                        }
+                        if (event === 'init' && data.sessionId) callbacks.onInit?.(data.sessionId);
+                        if (event === 'done') {
+                            if (data.assistantMessage?.content && data.assistantMessage.content.length > fullText.length) {
+                                fullText = data.assistantMessage.content;
+                            }
+                        } else if (!event || event === 'message') {
+                            if (data.content) fullText += data.content;
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+                processedUpTo = text.length - incompleteLen;
+                if (fullText && callbacks.onChunk) callbacks.onChunk(fullText);
+            };
+
+            xhr.onload = () => {
+                const text = xhr.responseText || '';
+                const parts = text.split('\n\n');
+                for (const part of parts) {
+                    if (!part.trim()) continue;
+                    const eventMatch = part.match(/^event: (.*)$/m);
+                    const dataMatch = part.match(/^data: (.*)$/m);
+                    const event = eventMatch ? eventMatch[1].trim() : 'message';
+                    const dataStr = dataMatch ? dataMatch[1].trim() : '';
+                    if (!dataStr) continue;
+                    try {
+                        const data = JSON.parse(dataStr);
+                        if (event === 'error') callbacks.onError?.(data.message || 'An error occurred.');
+                        if (event === 'init' && data.sessionId) callbacks.onInit?.(data.sessionId);
+                        if (event === 'done' && data.assistantMessage?.content) {
+                            if (data.assistantMessage.content.length > fullText.length) fullText = data.assistantMessage.content;
+                        } else if ((!event || event === 'message') && data.content) fullText += data.content;
+                    } catch (e) { /* ignore */ }
+                }
+                if (fullText && callbacks.onChunk) callbacks.onChunk(fullText);
+                callbacks.onDone?.();
+                resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status });
+            };
+
+            xhr.onerror = () => {
+                callbacks.onError?.('Network error. Please check your connection.');
+                resolve({ ok: false, status: 0 });
+            };
+
+            xhr.ontimeout = () => {
+                callbacks.onError?.('Request timed out.');
+                resolve({ ok: false, status: 0 });
+            };
+
+            try {
+                xhr.send(JSON.stringify({ content, sessionId: sessionId || undefined }));
+            } catch (e) {
+                callbacks.onError?.(e.message || 'Request failed.');
+                resolve({ ok: false, status: 0 });
+            }
+        });
     },
 
     /**
