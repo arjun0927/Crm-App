@@ -21,7 +21,6 @@ import {
   NotificationProvider,
 } from './src/context';
 import { configureGoogleSignIn } from './src/services';
-import messaging from '@react-native-firebase/messaging';
 
 // Ignore specific warnings (optional - for development)
 LogBox.ignoreLogs([
@@ -36,18 +35,6 @@ function App(): React.JSX.Element {
   // Configure Google Sign-In when the app starts
   useEffect(() => {
     configureGoogleSignIn();
-  }, []);
-
-  useEffect(() => {
-    const checkToken = async () => {
-      const authStatus = await messaging().requestPermission();
-      console.log('Permission status:', authStatus);
-
-      const token = await messaging().getToken();
-      console.log('FCM TOKEN:', token);
-    };
-
-    checkToken();
   }, []);
 
   return (
