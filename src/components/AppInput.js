@@ -10,7 +10,7 @@ import {
     StyleSheet,
     TouchableOpacity,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../constants/Colors';
 import { BorderRadius, Spacing } from '../constants/Spacing';
 import { FontSize } from '../constants/Fonts';
@@ -147,7 +147,7 @@ const AppInput = forwardRef(({
                         style={styles.rightIconButton}
                     >
                         <Icon
-                            name={isPasswordVisible ? 'eye-off' : 'eye'}
+                            name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
                             size={ms(20)}
                             color={Colors.textMuted}
                         />

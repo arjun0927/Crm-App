@@ -17,7 +17,7 @@ import {
     PanResponder,
     Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../constants/Colors';
 import { BorderRadius, Shadow } from '../constants/Spacing';
 import { ms, vs, wp } from '../utils/Responsive';

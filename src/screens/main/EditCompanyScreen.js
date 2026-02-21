@@ -12,7 +12,7 @@ import {
     Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs, wp } from '../../utils/Responsive';
@@ -140,7 +140,7 @@ const EditCompanyScreen = ({ navigation, route }) => {
                     style={styles.backButton}
                     activeOpacity={0.7}
                 >
-                    <Icon name="arrow-left" size={ms(24)} color={Colors.black} />
+                    <Icon name="arrow-back" size={ms(24)} color={Colors.black} />
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
                     {/* <View style={styles.headerIconContainer}>
@@ -167,10 +167,10 @@ const EditCompanyScreen = ({ navigation, route }) => {
                 >
                     {/* Basic Information Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="information" title="Basic Information" />
+                        <SectionHeader icon="information-circle-outline" title="Basic Information" />
 
                         <InputField
-                            icon="office-building"
+                            icon="business-outline"
                             label="Company Name *"
                             placeholder="Enter company name"
                             value={formData.name}
@@ -179,7 +179,7 @@ const EditCompanyScreen = ({ navigation, route }) => {
                         />
 
                         <InputField
-                            icon="account-tie"
+                            icon="person-outline"
                             label="Owner Name"
                             placeholder="Enter owner name"
                             value={formData.ownerName}
@@ -188,7 +188,7 @@ const EditCompanyScreen = ({ navigation, route }) => {
                         />
 
                         <InputField
-                            icon="account-star"
+                            icon="star-outline"
                             label="Salesperson"
                             placeholder="Enter salesperson name"
                             value={formData.salesperson}
@@ -197,7 +197,7 @@ const EditCompanyScreen = ({ navigation, route }) => {
                         />
 
                         <InputField
-                            icon="domain"
+                            icon="layers-outline"
                             label="Industry"
                             placeholder="Enter industry"
                             value={formData.industry}
@@ -208,10 +208,10 @@ const EditCompanyScreen = ({ navigation, route }) => {
 
                     {/* Contact Information Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="contacts" title="Contact Information" />
+                        <SectionHeader icon="people-circle-outline" title="Contact Information" />
 
                         <InputField
-                            icon="email"
+                            icon="mail-outline"
                             label="Email Address"
                             placeholder="Enter email address"
                             value={formData.email}
@@ -221,7 +221,7 @@ const EditCompanyScreen = ({ navigation, route }) => {
                         />
 
                         <InputField
-                            icon="phone"
+                            icon="call-outline"
                             label="Phone Number"
                             placeholder="Enter phone number"
                             value={formData.phone}
@@ -230,7 +230,7 @@ const EditCompanyScreen = ({ navigation, route }) => {
                         />
 
                         <InputField
-                            icon="web"
+                            icon="globe-outline"
                             label="Website"
                             placeholder="Enter website URL"
                             value={formData.website}
@@ -242,10 +242,10 @@ const EditCompanyScreen = ({ navigation, route }) => {
 
                     {/* Address Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="map-marker" title="Address Details" />
+                        <SectionHeader icon="location-outline" title="Address Details" />
 
                         <InputField
-                            icon="home"
+                            icon="home-outline"
                             label="Street Address"
                             placeholder="Enter street address"
                             value={formData.address}
@@ -258,7 +258,7 @@ const EditCompanyScreen = ({ navigation, route }) => {
                         <View style={styles.row}>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="city"
+                                    icon="storefront-outline"
                                     label="City"
                                     placeholder="Enter city"
                                     value={formData.city}
@@ -268,7 +268,7 @@ const EditCompanyScreen = ({ navigation, route }) => {
                             </View>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="map"
+                                    icon="map-outline"
                                     label="State"
                                     placeholder="Enter state"
                                     value={formData.state}
@@ -281,7 +281,7 @@ const EditCompanyScreen = ({ navigation, route }) => {
                         <View style={styles.row}>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="earth"
+                                    icon="earth-outline"
                                     label="Country"
                                     placeholder="Enter country"
                                     value={formData.country}
@@ -291,7 +291,7 @@ const EditCompanyScreen = ({ navigation, route }) => {
                             </View>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="mailbox"
+                                    icon="mail-open-outline"
                                     label="Pincode"
                                     placeholder="Enter pincode"
                                     value={formData.pincode}
@@ -304,10 +304,10 @@ const EditCompanyScreen = ({ navigation, route }) => {
 
                     {/* Tax Information Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="file-document" title="Tax Information" />
+                        <SectionHeader icon="document-text-outline" title="Tax Information" />
 
                         <InputField
-                            icon="identifier"
+                            icon="id-card-outline"
                             label="GSTIN"
                             placeholder="Enter GSTIN"
                             value={formData.gstin}
@@ -326,7 +326,7 @@ const EditCompanyScreen = ({ navigation, route }) => {
                         onPress={handleSubmit}
                         loading={loading}
                         disabled={loading || !formData.name.trim()}
-                        icon="content-save"
+                        icon="save-outline"
                         fullWidth
                         style={styles.updateButton}
                     />

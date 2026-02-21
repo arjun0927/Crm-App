@@ -34,6 +34,7 @@ export const STORAGE_KEYS = {
 export const ROUTES = {
     // Auth Stack
     SPLASH: 'Splash',
+    ONBOARDING: 'Onboarding',
     LOGIN: 'Login',
     REGISTER: 'Register',
     FORGOT_PASSWORD: 'ForgotPassword',

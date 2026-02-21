@@ -1,17 +1,18 @@
 /**
  * Add Task Screen
- * Form to create a new task
+ * Form to create a new task — UI matched to Expo AddTaskScreen
  */
 
 import React, { useState, useRef } from 'react';
 import {
     View,
+    Text,
     StyleSheet,
     TouchableOpacity,
     Keyboard,
     Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import IonIcon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs } from '../../utils/Responsive';
@@ -25,24 +26,25 @@ import {
     ModalLoader,
 } from '../../components';
 
+// Task types — matching Expo AddTaskScreen
 const TASK_TYPES = [
-    { id: 'call', label: 'Call', icon: 'phone', color: Colors.success },
-    { id: 'email', label: 'Email', icon: 'email', color: Colors.info },
-    { id: 'meeting', label: 'Meeting', icon: 'calendar', color: Colors.primary },
-    { id: 'document', label: 'Document', icon: 'file-document', color: Colors.accent },
+    { id: 'Call', icon: 'call', color: '#4D8733', bg: '#EEF5E6' },
+    { id: 'Email', icon: 'mail', color: '#3B82F6', bg: '#EFF6FF' },
+    { id: 'Meeting', icon: 'calendar', color: '#8B5CF6', bg: '#F3F0FF' },
+    { id: 'Document', icon: 'document-text', color: '#F59E0B', bg: '#FFFBEB' },
 ];
 
 const TASK_PRIORITIES = [
-    { id: 'low', label: 'Low', color: Colors.success },
-    { id: 'medium', label: 'Medium', color: Colors.warning },
-    { id: 'high', label: 'High', color: Colors.error },
+    { id: 'Low', color: '#3B82F6', bg: '#EFF6FF' },
+    { id: 'Medium', color: '#F59E0B', bg: '#FFFBEB' },
+    { id: 'High', color: '#EF4444', bg: '#FEF2F2' },
 ];
 
 const DUE_DATE_OPTIONS = [
-    { id: 'today', label: 'Today' },
-    { id: 'tomorrow', label: 'Tomorrow' },
-    { id: 'in_3_days', label: 'In 3 Days' },
-    { id: 'in_1_week', label: 'In 1 Week' },
+    { id: 'today', label: 'Today', days: 0 },
+    { id: 'tomorrow', label: 'Tomorrow', days: 1 },
+    { id: 'in3days', label: 'In 3 Days', days: 3 },
+    { id: 'inweek', label: 'In 1 Week', days: 7 },
 ];
 
 const AddTaskScreen = ({ navigation }) => {
@@ -51,8 +53,8 @@ const AddTaskScreen = ({ navigation }) => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        type: 'call',
-        priority: 'medium',
+        type: 'Call',
+        priority: 'Medium',
         dueOption: 'today',
         leadName: '',
     });
@@ -71,53 +73,27 @@ const AddTaskScreen = ({ navigation }) => {
 
     const getDueDate = (option) => {
         const today = new Date();
-        switch (option) {
-            case 'today':
-                return today;
-            case 'tomorrow':
-                return new Date(today.getTime() + 86400000);
-            case 'in_3_days':
-                return new Date(today.getTime() + 86400000 * 3);
-            case 'in_1_week':
-                return new Date(today.getTime() + 86400000 * 7);
-            default:
-                return today;
-        }
+        const opt = DUE_DATE_OPTIONS.find(o => o.id === option);
+        const days = opt ? opt.days : 0;
+        return new Date(today.getTime() + 86400000 * days);
     };
 
     const validateForm = () => {
         const newErrors = {};
-
-        if (!formData.title.trim()) {
-            newErrors.title = 'Task title is required';
-        }
-
+        if (!formData.title.trim()) newErrors.title = 'Task title is required';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
     const handleSave = async () => {
         Keyboard.dismiss();
-
         if (!validateForm()) return;
-
         setLoading(true);
-
-        const taskData = {
-            ...formData,
-            dueDate: getDueDate(formData.dueOption),
-        };
-
+        const taskData = { ...formData, dueDate: getDueDate(formData.dueOption) };
         const result = await addTask(taskData);
-
         setLoading(false);
-
         if (result.success) {
-            Alert.alert(
-                'Success',
-                'Task created successfully!',
-                [{ text: 'OK', onPress: () => navigation.goBack() }]
-            );
+            Alert.alert('Success', 'Task created successfully!', [{ text: 'OK', onPress: () => navigation.goBack() }]);
         } else {
             Alert.alert('Error', result.error || 'Failed to create task');
         }
@@ -129,12 +105,10 @@ const AddTaskScreen = ({ navigation }) => {
                 style={styles.backButton}
                 onPress={() => navigation.goBack()}
             >
-                <Icon name="close" size={ms(24)} color={Colors.textPrimary} />
+                <IonIcon name="close" size={22} color={Colors.textPrimary} />
             </TouchableOpacity>
-            <AppText size="lg" weight="semiBold">
-                Add New Task
-            </AppText>
-            <View style={styles.placeholder} />
+            <Text style={styles.headerTitle}>New Task</Text>
+            <View style={{ width: ms(40) }} />
         </View>
     );
 
@@ -147,58 +121,40 @@ const AddTaskScreen = ({ navigation }) => {
             {renderHeader()}
 
             <View style={styles.formContainer}>
-                {/* Task Type */}
-                <View style={styles.section}>
-                    <AppText size="base" weight="semiBold" style={styles.sectionTitle}>
-                        Task Type
-                    </AppText>
-                    <View style={styles.typeContainer}>
-                        {TASK_TYPES.map((type) => (
+                {/* Task Type — Expo chip row */}
+                <Text style={styles.sectionLabel}>TASK TYPE</Text>
+                <View style={styles.typeRow}>
+                    {TASK_TYPES.map((t) => {
+                        const active = formData.type === t.id;
+                        return (
                             <TouchableOpacity
-                                key={type.id}
+                                key={t.id}
                                 style={[
-                                    styles.typeCard,
-                                    formData.type === type.id && {
-                                        borderColor: type.color,
-                                        backgroundColor: type.color + '15',
-                                    },
+                                    styles.typeChip,
+                                    active && { backgroundColor: t.bg, borderColor: t.color },
                                 ]}
-                                onPress={() => updateField('type', type.id)}
+                                onPress={() => updateField('type', t.id)}
                             >
-                                <View style={[
-                                    styles.typeIcon,
-                                    { backgroundColor: formData.type === type.id ? type.color : Colors.border }
-                                ]}>
-                                    <Icon
-                                        name={type.icon}
-                                        size={ms(20)}
-                                        color={Colors.white}
-                                    />
+                                <View style={[styles.typeChipIcon, { backgroundColor: active ? t.color : Colors.background }]}>
+                                    <IonIcon name={t.icon} size={18} color={active ? '#fff' : Colors.textTertiary} />
                                 </View>
-                                <AppText
-                                    size="sm"
-                                    weight={formData.type === type.id ? 'semiBold' : 'regular'}
-                                    color={formData.type === type.id ? type.color : Colors.textSecondary}
-                                >
-                                    {type.label}
-                                </AppText>
+                                <Text style={[styles.typeChipText, active && { color: t.color, fontWeight: '700' }]}>
+                                    {t.id}
+                                </Text>
                             </TouchableOpacity>
-                        ))}
-                    </View>
+                        );
+                    })}
                 </View>
 
                 {/* Task Details */}
-                <View style={styles.section}>
-                    <AppText size="base" weight="semiBold" style={styles.sectionTitle}>
-                        Task Details
-                    </AppText>
-
+                <Text style={styles.sectionLabel}>TASK DETAILS</Text>
+                <View style={styles.sectionCard}>
                     <AppInput
                         label="Task Title"
                         placeholder="What needs to be done?"
                         value={formData.title}
                         onChangeText={(text) => updateField('title', text)}
-                        leftIcon="clipboard-text-outline"
+                        leftIcon="clipboard-outline"
                         error={!!errors.title}
                         errorMessage={errors.title}
                         returnKeyType="next"
@@ -222,74 +178,57 @@ const AddTaskScreen = ({ navigation }) => {
                         placeholder="Enter lead name (optional)"
                         value={formData.leadName}
                         onChangeText={(text) => updateField('leadName', text)}
-                        leftIcon="account-outline"
+                        leftIcon="person-outline"
                     />
                 </View>
 
-                {/* Priority */}
-                <View style={styles.section}>
-                    <AppText size="base" weight="semiBold" style={styles.sectionTitle}>
-                        Priority
-                    </AppText>
-                    <View style={styles.priorityContainer}>
-                        {TASK_PRIORITIES.map((priority) => (
+                {/* Priority — Expo pill row */}
+                <Text style={styles.sectionLabel}>PRIORITY</Text>
+                <View style={styles.pillRow}>
+                    {TASK_PRIORITIES.map((p) => {
+                        const active = formData.priority === p.id;
+                        return (
                             <TouchableOpacity
-                                key={priority.id}
+                                key={p.id}
                                 style={[
-                                    styles.priorityButton,
-                                    formData.priority === priority.id && { backgroundColor: priority.color },
+                                    styles.pill,
+                                    active && { backgroundColor: p.color, borderColor: p.color },
                                 ]}
-                                onPress={() => updateField('priority', priority.id)}
+                                onPress={() => updateField('priority', p.id)}
                             >
-                                <Icon
-                                    name="flag"
-                                    size={ms(16)}
-                                    color={formData.priority === priority.id ? Colors.white : priority.color}
-                                />
-                                <AppText
-                                    size="sm"
-                                    weight="semiBold"
-                                    color={formData.priority === priority.id ? Colors.white : priority.color}
-                                    style={styles.priorityLabel}
-                                >
-                                    {priority.label}
-                                </AppText>
+                                <IonIcon name="flag" size={13} color={active ? '#fff' : p.color} />
+                                <Text style={[styles.pillText, active && { color: '#fff' }]}>{p.id}</Text>
                             </TouchableOpacity>
-                        ))}
-                    </View>
+                        );
+                    })}
                 </View>
 
-                {/* Due Date */}
-                <View style={styles.section}>
-                    <AppText size="base" weight="semiBold" style={styles.sectionTitle}>
-                        Due Date
-                    </AppText>
-                    <View style={styles.dueDateContainer}>
-                        {DUE_DATE_OPTIONS.map((option) => (
+                {/* Due Date — Expo pill row */}
+                <Text style={styles.sectionLabel}>DUE DATE</Text>
+                <View style={styles.pillRow}>
+                    {DUE_DATE_OPTIONS.map((opt) => {
+                        const active = formData.dueOption === opt.id;
+                        return (
                             <TouchableOpacity
-                                key={option.id}
+                                key={opt.id}
                                 style={[
-                                    styles.dueDateButton,
-                                    formData.dueOption === option.id && styles.dueDateButtonActive,
+                                    styles.pill,
+                                    active && { backgroundColor: Colors.primary, borderColor: Colors.primary },
                                 ]}
-                                onPress={() => updateField('dueOption', option.id)}
+                                onPress={() => updateField('dueOption', opt.id)}
                             >
-                                <AppText
-                                    size="sm"
-                                    weight={formData.dueOption === option.id ? 'semiBold' : 'regular'}
-                                    color={formData.dueOption === option.id ? Colors.white : Colors.textSecondary}
-                                >
-                                    {option.label}
-                                </AppText>
+                                <Text style={[styles.pillText, active && { color: '#fff' }]}>{opt.label}</Text>
                             </TouchableOpacity>
-                        ))}
-                    </View>
-                    <View style={styles.selectedDateContainer}>
-                        <Icon name="calendar-check" size={ms(18)} color={Colors.primary} />
-                        <AppText size="sm" color={Colors.primary} style={styles.selectedDate}>
-                            Due: {formatDate(getDueDate(formData.dueOption), 'long')}
-                        </AppText>
-                    </View>
+                        );
+                    })}
+                </View>
+
+                {/* Selected date indicator */}
+                <View style={styles.selectedDateContainer}>
+                    <IonIcon name="calendar" size={ms(18)} color={Colors.primary} />
+                    <Text style={styles.selectedDate}>
+                        Due: {formatDate(getDueDate(formData.dueOption), 'long')}
+                    </Text>
                 </View>
 
                 {/* Save Button */}
@@ -309,92 +248,102 @@ const AddTaskScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+    // Header — matching Expo AddTaskScreen
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: vs(24),
+        marginBottom: vs(16),
     },
     backButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
+        width: ms(40),
+        height: ms(40),
+        borderRadius: ms(20),
+        backgroundColor: Colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
         ...Shadow.sm,
     },
-    placeholder: {
-        width: ms(44),
+    headerTitle: {
+        fontSize: ms(20),
+        fontWeight: '700',
+        color: Colors.textPrimary,
     },
+
     formContainer: {
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.card,
-        padding: Spacing.lg,
+        flex: 1,
+    },
+
+    // Section labels — uppercase Expo style
+    sectionLabel: {
+        fontSize: ms(11),
+        fontWeight: '700',
+        color: Colors.textTertiary,
+        letterSpacing: 0.8,
+        marginTop: Spacing.xl,
+        marginBottom: Spacing.sm,
+        paddingLeft: 2,
+    },
+    sectionCard: {
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        overflow: 'hidden',
+        padding: Spacing.md,
         ...Shadow.sm,
     },
-    section: {
-        marginBottom: vs(24),
-    },
-    sectionTitle: {
-        marginBottom: Spacing.md,
-    },
-    typeContainer: {
+
+    // Task type chips — matching Expo
+    typeRow: {
         flexDirection: 'row',
         gap: Spacing.sm,
     },
-    typeCard: {
+    typeChip: {
         flex: 1,
         alignItems: 'center',
         paddingVertical: vs(14),
         borderRadius: BorderRadius.md,
         borderWidth: 1.5,
-        borderColor: Colors.border,
-        backgroundColor: Colors.background,
+        borderColor: Colors.surfaceBorder,
+        backgroundColor: Colors.surface,
     },
-    typeIcon: {
-        width: ms(40),
-        height: ms(40),
-        borderRadius: BorderRadius.round,
+    typeChipIcon: {
+        width: ms(36),
+        height: ms(36),
+        borderRadius: ms(18),
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: Spacing.xs,
     },
-    priorityContainer: {
-        flexDirection: 'row',
-        gap: Spacing.sm,
+    typeChipText: {
+        fontSize: ms(12),
+        fontWeight: '600',
+        color: Colors.textSecondary,
     },
-    priorityButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: vs(12),
-        borderRadius: BorderRadius.button,
-        borderWidth: 1.5,
-        borderColor: Colors.border,
-        backgroundColor: Colors.background,
-    },
-    priorityLabel: {
-        marginLeft: Spacing.xs,
-    },
-    dueDateContainer: {
+
+    // Pill row — matching Expo
+    pillRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: Spacing.sm,
     },
-    dueDateButton: {
-        paddingHorizontal: Spacing.md,
-        paddingVertical: vs(10),
+    pill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: ms(14),
+        paddingVertical: ms(10),
         borderRadius: BorderRadius.round,
+        backgroundColor: Colors.surface,
         borderWidth: 1.5,
-        borderColor: Colors.border,
-        backgroundColor: Colors.background,
+        borderColor: Colors.surfaceBorder,
+        gap: 5,
     },
-    dueDateButtonActive: {
-        backgroundColor: Colors.primary,
-        borderColor: Colors.primary,
+    pillText: {
+        fontSize: ms(13),
+        fontWeight: '600',
+        color: Colors.textSecondary,
     },
+
+    // Selected date
     selectedDateContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -405,9 +354,13 @@ const styles = StyleSheet.create({
     },
     selectedDate: {
         marginLeft: Spacing.sm,
+        fontSize: ms(13),
+        fontWeight: '600',
+        color: Colors.primary,
     },
+
     saveButton: {
-        marginTop: Spacing.md,
+        marginTop: Spacing.xl,
     },
     bottomSpacer: {
         height: vs(40),

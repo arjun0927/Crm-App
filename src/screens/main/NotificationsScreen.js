@@ -1,11 +1,12 @@
 /**
  * Notifications Screen
- * Live list of notifications (from API + FCM), with tabs like web: CRM | Marketing | Other
+ * Live list of notifications — UI matched to Expo NotificationsScreen
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     View,
+    Text,
     StyleSheet,
     TouchableOpacity,
     FlatList,
@@ -14,16 +15,26 @@ import {
     Image,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import IonIcon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
-import { Spacing } from '../../constants/Spacing';
-import { ms } from '../../utils/Responsive';
+import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
+import { ms, vs } from '../../utils/Responsive';
 import { ScreenWrapper, AppText } from '../../components';
 import { useNotification } from '../../context';
 
-const TAB_CRM = 'crm';
-const TAB_MARKETING = 'marketing';
-const TAB_OTHER = 'other';
+const CATEGORIES = ['CRM', 'Marketing', 'Other'];
+const CAT_ICONS = {
+    CRM: 'people',
+    Marketing: 'megaphone',
+    Other: 'ellipsis-horizontal',
+};
+
+const SUB_CATEGORIES = ['Leads', 'Tasks', 'Companies'];
+const SUB_ICONS = {
+    Leads: 'trending-up',
+    Tasks: 'checkbox',
+    Companies: 'grid',
+};
 
 const CRM_TYPES = ['lead', 'task', 'company'];
 const MARKETING_TYPES = ['campaign', 'broadcast'];
@@ -36,51 +47,45 @@ const isValidImageUrl = (url) =>
     url.trim().length > 0 &&
     (url.startsWith('http://') || url.startsWith('https://'));
 
-const formatTime = (timestamp) => {
+const timeAgo = (timestamp) => {
     if (!timestamp) return '';
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return date.toLocaleDateString();
+    const diff = Date.now() - new Date(timestamp).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
 };
 
 const NotificationItem = ({ item, onPress, onMarkRead }) => (
     <TouchableOpacity
-        style={[styles.item, !item.read && styles.itemUnread]}
+        style={[styles.notifCard, !item.read && styles.notifCardUnread]}
         onPress={() => {
             onMarkRead(item._id);
             onPress(item);
         }}
-        activeOpacity={0.7}
+        activeOpacity={0.85}
     >
-        {!item.read && <View style={styles.unreadDot} />}
+        {!item.read ? <View style={styles.unreadDot} /> : null}
         {isValidImageUrl(item.imageUrl) && (
             <View style={styles.thumb}>
                 <Image source={{ uri: item.imageUrl }} style={styles.thumbImage} />
             </View>
         )}
-        <View style={styles.itemContent}>
-            <AppText size="sm" weight={item.read ? 'normal' : 'semiBold'} numberOfLines={1}>
-                {item.title}
-            </AppText>
-            <AppText size="xs" color={Colors.textMuted} numberOfLines={2} style={styles.desc}>
-                {item.description}
-            </AppText>
+        <View style={styles.notifContent}>
+            <Text style={[styles.notifTitle, !item.read && { fontWeight: '700' }]}>{item.title}</Text>
+            <Text style={styles.notifBody} numberOfLines={2}>{item.description}</Text>
         </View>
-        <AppText size="xs" color={Colors.textMuted} style={styles.time}>
-            {formatTime(item.createdAt)}
-        </AppText>
+        <Text style={styles.notifTime}>{timeAgo(item.createdAt)}</Text>
     </TouchableOpacity>
 );
 
 const NotificationsScreen = () => {
     const navigation = useNavigation();
-    const [activeTab, setActiveTab] = useState(TAB_CRM);
+    const [activeCat, setActiveCat] = useState('CRM');
+    const [activeSub, setActiveSub] = useState('Leads');
     const {
         notifications,
         notificationsLoading,
@@ -94,19 +99,46 @@ const NotificationsScreen = () => {
         const crm = (notifications || []).filter((n) => CRM_TYPES.includes(n.type));
         const marketing = (notifications || []).filter((n) => MARKETING_TYPES.includes(n.type));
         const other = (notifications || []).filter((n) => OTHER_TYPES.includes(n.type));
-        const list =
-            activeTab === TAB_CRM
+        const catList =
+            activeCat === 'CRM'
                 ? crm
-                : activeTab === TAB_MARKETING
+                : activeCat === 'Marketing'
                     ? marketing
                     : other;
+        // Sub-filter by sub-category
+        const list = catList.filter((n) => {
+            if (activeSub === 'Leads') return n.type === 'lead';
+            if (activeSub === 'Tasks') return n.type === 'task';
+            if (activeSub === 'Companies') return n.type === 'company';
+            return true;
+        });
         return {
             crmNotifications: crm,
             marketingNotifications: marketing,
             otherNotifications: other,
             filteredList: list,
         };
-    }, [notifications, activeTab]);
+    }, [notifications, activeCat, activeSub]);
+
+    const catCounts = useMemo(() => ({
+        CRM: getUnreadCount(crmNotifications),
+        Marketing: getUnreadCount(marketingNotifications),
+        Other: getUnreadCount(otherNotifications),
+    }), [crmNotifications, marketingNotifications, otherNotifications]);
+
+    const subCounts = useMemo(() => {
+        const catList =
+            activeCat === 'CRM'
+                ? crmNotifications
+                : activeCat === 'Marketing'
+                    ? marketingNotifications
+                    : otherNotifications;
+        return {
+            Leads: catList.filter((n) => n.type === 'lead' && !n.read).length,
+            Tasks: catList.filter((n) => n.type === 'task' && !n.read).length,
+            Companies: catList.filter((n) => n.type === 'company' && !n.read).length,
+        };
+    }, [activeCat, crmNotifications, marketingNotifications, otherNotifications]);
 
     useFocusEffect(
         useCallback(() => {
@@ -120,112 +152,11 @@ const NotificationsScreen = () => {
         } else if (item.entityId && item.type === 'task') {
             navigation.navigate('TaskDetails', { id: item.entityId });
         }
-        // company, campaign, broadcast, system, announcement: no deep link in app for now
     };
-
-    const renderHeader = () => (
-        <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
-            </TouchableOpacity>
-            <AppText size="lg" weight="bold">Notifications</AppText>
-            {unreadCount > 0 ? (
-                <TouchableOpacity onPress={markAllNotificationsAsRead} style={styles.markAllBtn}>
-                    <AppText size="xs" color={Colors.primary}>Mark all read</AppText>
-                </TouchableOpacity>
-            ) : (
-                <View style={styles.placeholder} />
-            )}
-        </View>
-    );
-
-    const renderTabs = () => (
-        <View style={styles.tabsRow}>
-            <TouchableOpacity
-                style={[styles.tab, activeTab === TAB_CRM && styles.tabActive]}
-                onPress={() => setActiveTab(TAB_CRM)}
-                activeOpacity={0.7}
-            >
-                <Icon
-                    name="account-group-outline"
-                    size={ms(18)}
-                    color={activeTab === TAB_CRM ? Colors.primary : Colors.textMuted}
-                />
-                <AppText
-                    size="xs"
-                    weight={activeTab === TAB_CRM ? 'semiBold' : 'normal'}
-                    color={activeTab === TAB_CRM ? Colors.primary : Colors.textMuted}
-                    style={styles.tabLabel}
-                >
-                    CRM
-                </AppText>
-                {getUnreadCount(crmNotifications) > 0 && (
-                    <View style={styles.tabBadge}>
-                        <AppText size="xs" weight="bold" color={Colors.white}>
-                            {getUnreadCount(crmNotifications) > 9 ? '9+' : getUnreadCount(crmNotifications)}
-                        </AppText>
-                    </View>
-                )}
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.tab, activeTab === TAB_MARKETING && styles.tabActive]}
-                onPress={() => setActiveTab(TAB_MARKETING)}
-                activeOpacity={0.7}
-            >
-                <Icon
-                    name="bullhorn-outline"
-                    size={ms(18)}
-                    color={activeTab === TAB_MARKETING ? Colors.primary : Colors.textMuted}
-                />
-                <AppText
-                    size="xs"
-                    weight={activeTab === TAB_MARKETING ? 'semiBold' : 'normal'}
-                    color={activeTab === TAB_MARKETING ? Colors.primary : Colors.textMuted}
-                    style={styles.tabLabel}
-                >
-                    Marketing
-                </AppText>
-                {getUnreadCount(marketingNotifications) > 0 && (
-                    <View style={styles.tabBadge}>
-                        <AppText size="xs" weight="bold" color={Colors.white}>
-                            {getUnreadCount(marketingNotifications) > 9 ? '9+' : getUnreadCount(marketingNotifications)}
-                        </AppText>
-                    </View>
-                )}
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={[styles.tab, activeTab === TAB_OTHER && styles.tabActive]}
-                onPress={() => setActiveTab(TAB_OTHER)}
-                activeOpacity={0.7}
-            >
-                <Icon
-                    name="dots-horizontal"
-                    size={ms(18)}
-                    color={activeTab === TAB_OTHER ? Colors.primary : Colors.textMuted}
-                />
-                <AppText
-                    size="xs"
-                    weight={activeTab === TAB_OTHER ? 'semiBold' : 'normal'}
-                    color={activeTab === TAB_OTHER ? Colors.primary : Colors.textMuted}
-                    style={styles.tabLabel}
-                >
-                    Other
-                </AppText>
-                {getUnreadCount(otherNotifications) > 0 && (
-                    <View style={styles.tabBadge}>
-                        <AppText size="xs" weight="bold" color={Colors.white}>
-                            {getUnreadCount(otherNotifications) > 9 ? '9+' : getUnreadCount(otherNotifications)}
-                        </AppText>
-                    </View>
-                )}
-            </TouchableOpacity>
-        </View>
-    );
 
     if (notificationsLoading && notifications.length === 0) {
         return (
             <ScreenWrapper>
-                {renderHeader()}
                 <View style={styles.centered}>
                     <ActivityIndicator size="large" color={Colors.primary} />
                 </View>
@@ -234,12 +165,78 @@ const NotificationsScreen = () => {
     }
 
     return (
-        <ScreenWrapper>
-            {renderHeader()}
-            {renderTabs()}
+        <ScreenWrapper backgroundColor={Colors.background}>
+            {/* Header — Expo style */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                    <IonIcon name="arrow-back" size={ms(22)} color={Colors.textPrimary} />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Notifications</Text>
+                <View style={styles.liveIndicator}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveText}>Live</Text>
+                </View>
+            </View>
+
+            {/* Category tabs — Expo style */}
+            <View style={styles.catRow}>
+                {CATEGORIES.map((cat) => {
+                    const active = activeCat === cat;
+                    return (
+                        <TouchableOpacity
+                            key={cat}
+                            style={[styles.catTab, active && styles.catTabActive]}
+                            onPress={() => setActiveCat(cat)}
+                        >
+                            <IonIcon
+                                name={CAT_ICONS[cat]}
+                                size={ms(16)}
+                                color={active ? Colors.primary : Colors.textTertiary}
+                            />
+                            <Text style={[styles.catText, active && styles.catTextActive]}>{cat}</Text>
+                            {catCounts[cat] > 0 ? (
+                                <View style={styles.catBadge}>
+                                    <Text style={styles.catBadgeText}>{catCounts[cat]}</Text>
+                                </View>
+                            ) : null}
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+
+            {/* Sub-category pills — Expo style */}
+            <View style={styles.subRow}>
+                {SUB_CATEGORIES.map((sub) => {
+                    const active = activeSub === sub;
+                    return (
+                        <TouchableOpacity
+                            key={sub}
+                            style={[styles.subPill, active && styles.subPillActive]}
+                            onPress={() => setActiveSub(sub)}
+                            activeOpacity={0.8}
+                        >
+                            <IonIcon
+                                name={SUB_ICONS[sub]}
+                                size={ms(14)}
+                                color={active ? '#fff' : Colors.textSecondary}
+                            />
+                            <Text style={[styles.subText, active && styles.subTextActive]}>{sub}</Text>
+                            {subCounts[sub] > 0 ? (
+                                <View style={[styles.subBadge, active && styles.subBadgeActive]}>
+                                    <Text style={[styles.subBadgeText, active && { color: '#fff' }]}>{subCounts[sub]}</Text>
+                                </View>
+                            ) : null}
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+
+            {/* Notification list */}
             <FlatList
                 data={filteredList}
                 keyExtractor={(n) => n._id}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => (
                     <NotificationItem
                         item={item}
@@ -247,13 +244,21 @@ const NotificationsScreen = () => {
                         onMarkRead={markNotificationAsRead}
                     />
                 )}
-                contentContainerStyle={filteredList.length === 0 && styles.emptyList}
+                ListFooterComponent={
+                    notifications.length > 0 ? (
+                        <TouchableOpacity
+                            style={styles.markAllBtn}
+                            onPress={markAllNotificationsAsRead}
+                        >
+                            <Text style={styles.markAllText}>Mark all as read</Text>
+                        </TouchableOpacity>
+                    ) : null
+                }
                 ListEmptyComponent={
-                    <View style={styles.empty}>
-                        <Icon name="bell-outline" size={ms(48)} color={Colors.textMuted} />
-                        <AppText size="base" color={Colors.textMuted} style={styles.emptyText}>
-                            No notifications in this tab
-                        </AppText>
+                    <View style={styles.emptyState}>
+                        <IonIcon name="notifications-off-outline" size={ms(48)} color={Colors.surfaceBorder} />
+                        <Text style={styles.emptyTitle}>No notifications</Text>
+                        <Text style={styles.emptySubtitle}>You're all caught up in {activeCat} / {activeSub}</Text>
                     </View>
                 }
                 refreshControl={
@@ -269,116 +274,223 @@ const NotificationsScreen = () => {
 };
 
 const styles = StyleSheet.create({
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    // Header — matching Expo
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Spacing.sm,
+        paddingBottom: Spacing.md,
     },
-    tabsRow: {
+    backBtn: {
+        width: ms(40),
+        height: ms(40),
+        borderRadius: ms(14),
+        backgroundColor: Colors.surface,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...Shadow.sm,
+    },
+    headerTitle: {
+        flex: 1,
+        fontSize: ms(22),
+        fontWeight: '800',
+        color: Colors.textPrimary,
+        marginLeft: Spacing.md,
+    },
+    liveIndicator: {
         flexDirection: 'row',
-        alignItems: 'stretch',
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-        paddingHorizontal: Spacing.xs,
-        paddingVertical: Spacing.xs,
+        alignItems: 'center',
+        gap: 5,
     },
-    tab: {
+    liveDot: {
+        width: ms(8),
+        height: ms(8),
+        borderRadius: ms(4),
+        backgroundColor: Colors.primary,
+    },
+    liveText: {
+        fontSize: ms(13),
+        fontWeight: '600',
+        color: Colors.primary,
+    },
+
+    // Category tabs — Expo style
+    catRow: {
+        flexDirection: 'row',
+        paddingHorizontal: Spacing.lg,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.divider,
+        marginBottom: Spacing.sm,
+    },
+    catTab: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.xs,
+        paddingVertical: ms(12),
+        gap: 5,
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
+    },
+    catTabActive: {
+        borderBottomColor: Colors.primary,
+    },
+    catText: {
+        fontSize: ms(13),
+        fontWeight: '600',
+        color: Colors.textTertiary,
+    },
+    catTextActive: {
+        color: Colors.primary,
+    },
+    catBadge: {
+        backgroundColor: Colors.danger,
         borderRadius: 8,
-        backgroundColor: Colors.background,
-    },
-    tabActive: {
-        backgroundColor: Colors.primary + '18',
-    },
-    tabLabel: {
-        marginLeft: 4,
-    },
-    tabBadge: {
-        marginLeft: 4,
         minWidth: ms(18),
         height: ms(18),
-        borderRadius: ms(9),
-        backgroundColor: Colors.error,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 4,
     },
-    backBtn: {
-        padding: Spacing.xs,
+    catBadgeText: {
+        color: '#fff',
+        fontSize: ms(10),
+        fontWeight: '700',
     },
-    markAllBtn: {
-        padding: Spacing.xs,
+
+    // Sub-category pills — Expo style
+    subRow: {
+        flexDirection: 'row',
+        paddingHorizontal: Spacing.lg,
+        gap: Spacing.sm,
+        marginBottom: Spacing.md,
     },
-    placeholder: {
-        width: ms(70),
-    },
-    item: {
+    subPill: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-        paddingLeft: Spacing.md + 6,
+        justifyContent: 'center',
+        paddingVertical: ms(10),
+        borderRadius: BorderRadius.md,
+        backgroundColor: Colors.surface,
+        gap: 4,
+        ...Shadow.sm,
     },
-    itemUnread: {
-        backgroundColor: Colors.background + '99',
+    subPillActive: {
+        backgroundColor: Colors.primary,
+    },
+    subText: {
+        fontSize: ms(12),
+        fontWeight: '600',
+        color: Colors.textSecondary,
+    },
+    subTextActive: {
+        color: '#fff',
+    },
+    subBadge: {
+        backgroundColor: Colors.divider,
+        borderRadius: 8,
+        paddingHorizontal: 5,
+        paddingVertical: 1,
+    },
+    subBadgeActive: {
+        backgroundColor: 'rgba(255,255,255,0.3)',
+    },
+    subBadgeText: {
+        fontSize: ms(10),
+        fontWeight: '700',
+        color: Colors.textSecondary,
+    },
+
+    // Notification cards — Expo style
+    listContent: {
+        paddingHorizontal: Spacing.lg,
+        paddingBottom: ms(40),
+    },
+    notifCard: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        padding: ms(14),
+        marginBottom: Spacing.sm,
+        ...Shadow.sm,
+    },
+    notifCardUnread: {
+        backgroundColor: Colors.primaryBackground + '40',
     },
     unreadDot: {
-        position: 'absolute',
-        left: Spacing.sm,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        width: ms(8),
+        height: ms(8),
+        borderRadius: ms(4),
         backgroundColor: Colors.primary,
+        marginTop: ms(6),
+        marginRight: Spacing.sm,
     },
     thumb: {
         width: ms(44),
         height: ms(44),
         borderRadius: 8,
         overflow: 'hidden',
-        backgroundColor: Colors.border,
+        backgroundColor: Colors.divider,
         marginRight: Spacing.sm,
     },
     thumbImage: {
         width: '100%',
         height: '100%',
     },
-    itemContent: {
+    notifContent: {
         flex: 1,
-        minWidth: 0,
     },
-    desc: {
+    notifTitle: {
+        fontSize: ms(14),
+        fontWeight: '600',
+        color: Colors.textPrimary,
+    },
+    notifBody: {
+        fontSize: ms(12),
+        color: Colors.textSecondary,
         marginTop: 2,
+        lineHeight: ms(18),
     },
-    time: {
-        marginLeft: Spacing.xs,
+    notifTime: {
+        fontSize: ms(11),
+        color: Colors.textTertiary,
+        marginLeft: Spacing.sm,
     },
-    emptyList: {
-        flexGrow: 1,
-    },
-    empty: {
-        flex: 1,
+    markAllBtn: {
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: Spacing.xxl,
-    },
-    emptyText: {
+        paddingVertical: ms(14),
+        borderTopWidth: 1,
+        borderTopColor: Colors.divider,
         marginTop: Spacing.sm,
     },
-    centered: {
-        flex: 1,
-        justifyContent: 'center',
+    markAllText: {
+        fontSize: ms(14),
+        fontWeight: '600',
+        color: Colors.textTertiary,
+    },
+    emptyState: {
         alignItems: 'center',
+        paddingTop: ms(60),
+    },
+    emptyTitle: {
+        fontSize: ms(16),
+        fontWeight: '700',
+        color: Colors.textPrimary,
+        marginTop: Spacing.md,
+    },
+    emptySubtitle: {
+        fontSize: ms(13),
+        color: Colors.textTertiary,
+        marginTop: 4,
+        textAlign: 'center',
     },
 });
 

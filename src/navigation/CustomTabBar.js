@@ -10,7 +10,7 @@ import {
     TouchableOpacity,
     Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../constants/Spacing';
 import { ms, vs, wp } from '../utils/Responsive';

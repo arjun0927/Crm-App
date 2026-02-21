@@ -1,186 +1,107 @@
 /**
  * Dashboard Screen
- * Main overview screen with company list and pagination
+ * Company list with pagination — UI matched to Expo CompaniesScreen
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
     View,
+    Text,
     StyleSheet,
     TouchableOpacity,
     FlatList,
     ActivityIndicator,
     RefreshControl,
-    LayoutAnimation,
-    Platform,
-    UIManager,
     TextInput,
+    Linking,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import IonIcon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ROUTES } from '../../constants';
 import { ms, vs, wp } from '../../utils/Responsive';
-import { formatDate } from '../../utils/Helpers';
 import { useAuth } from '../../context';
-import { AppText, AppButton } from '../../components';
+import { AppText } from '../../components';
 import { companiesAPI } from '../../api';
 import { showError } from '../../utils';
 
-// Enable LayoutAnimation for Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
 const LIMIT = 50;
 
-// Company Card Component with expandable section
+// Industry icon mapping — matching Expo CompaniesScreen
+function getIndustryConfig(industry) {
+    const map = {
+        SaaS: { icon: 'cloud', color: '#3B82F6', bg: '#EFF6FF' },
+        Finance: { icon: 'wallet', color: '#10B981', bg: '#ECFDF5' },
+        Design: { icon: 'color-palette', color: '#EC4899', bg: '#FDF2F8' },
+        Tech: { icon: 'hardware-chip', color: '#6366F1', bg: '#EEF2FF' },
+    };
+    return map[industry || ''] || { icon: 'business', color: '#4D8733', bg: '#EEF5E6' };
+}
+
+// Company Card — matching Expo CompaniesScreen design
 const CompanyCard = ({ company, onPress, onEdit, onDelete }) => {
-    // ... existing CompanyCard code ...
-    const [expanded, setExpanded] = useState(false);
-
-    const toggleExpand = () => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setExpanded(!expanded);
-    };
-
-    // Helper to format location
-    const formatLocation = () => {
-        const parts = [company.city, company.state, company.country].filter(Boolean);
-        return parts.length > 0 ? parts.join(', ') : 'N/A';
-    };
-
-    // Helper to get value or N/A
-    const getValue = (value) => {
-        if (value === undefined || value === null || value === '') {
-            return 'N/A';
-        }
-        return value;
-    };
-
-    // Format date helper
-    const formatDateValue = (dateString) => {
-        if (!dateString) return 'N/A';
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-            });
-        } catch {
-            return 'N/A';
-        }
-    };
-
-    // Key-Value Row Component
-    const KeyValueRow = ({ label, value, valueColor, isLast }) => (
-        <View style={[styles.keyValueRow, isLast && styles.keyValueRowLast]}>
-            <AppText size="sm" color={Colors.textMuted} style={styles.keyText}>
-                {label}
-            </AppText>
-            <AppText
-                size="sm"
-                weight="medium"
-                color={valueColor || Colors.textPrimary}
-                style={styles.valueText}
-                numberOfLines={1}
-            >
-                {value}
-            </AppText>
-        </View>
-    );
+    const ic = getIndustryConfig(company.industry);
+    const location = [company.city, company.state].filter(Boolean).join(', ');
 
     return (
-        <View style={styles.companyCard}>
-            {/* Card Header */}
-            <View style={styles.cardHeader}>
-                <TouchableOpacity
-                    style={styles.cardHeaderContent}
-                    onPress={onPress}
-                    activeOpacity={0.7}
-                >
-                    <View style={styles.iconContainer}>
-                        <Icon name="office-building" size={ms(20)} color={Colors.primary} />
-                    </View>
-                    <View style={styles.companyTitleContainer}>
-                        <AppText size="base" weight="bold" numberOfLines={1}>
-                            {getValue(company.name)}
-                        </AppText>
-                    </View>
-                </TouchableOpacity>
-
-                {/* Edit & Delete Icons */}
-                <View style={styles.headerActions}>
-                    <TouchableOpacity
-                        style={styles.actionIconButton}
-                        onPress={() => onEdit?.(company)}
-                        activeOpacity={0.7}
-                    >
-                        <Icon name="pencil" size={ms(18)} color={Colors.info} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.actionIconButton}
-                        onPress={() => onDelete?.(company)}
-                        activeOpacity={0.7}
-                    >
-                        <Icon name="delete" size={ms(18)} color={Colors.error} />
-                    </TouchableOpacity>
+        <View style={styles.card}>
+            {/* Card header */}
+            <TouchableOpacity style={styles.cardTop} onPress={onPress} activeOpacity={0.8}>
+                <View style={[styles.industryIcon, { backgroundColor: ic.bg }]}>
+                    <IonIcon name={ic.icon} size={20} color={ic.color} />
                 </View>
+                <View style={styles.cardTopText}>
+                    <Text style={styles.companyName} numberOfLines={1}>{company.name || 'Untitled'}</Text>
+                    {company.industry ? (
+                        <View style={[styles.industryTag, { backgroundColor: ic.bg }]}>
+                            <Text style={[styles.industryTagText, { color: ic.color }]}>{company.industry}</Text>
+                        </View>
+                    ) : null}
+                </View>
+            </TouchableOpacity>
+
+            {/* Key metrics row */}
+            <View style={styles.metricsRow}>
+                {company.salesperson ? (
+                    <View style={styles.metricItem}>
+                        <IonIcon name="person-outline" size={13} color={Colors.textTertiary} />
+                        <Text style={styles.metricText}>{company.salesperson}</Text>
+                    </View>
+                ) : null}
+                {location ? (
+                    <View style={styles.metricItem}>
+                        <IonIcon name="location-outline" size={13} color={Colors.textTertiary} />
+                        <Text style={styles.metricText}>{location}</Text>
+                    </View>
+                ) : null}
+                {company.email ? (
+                    <TouchableOpacity style={styles.metricItem} onPress={() => Linking.openURL(`mailto:${company.email}`)}>
+                        <IonIcon name="mail-outline" size={13} color={Colors.info} />
+                        <Text style={[styles.metricText, { color: Colors.info }]} numberOfLines={1}>{company.email}</Text>
+                    </TouchableOpacity>
+                ) : null}
             </View>
 
-            {/* Card Body - 4 Main Fields in Key-Value Layout */}
-            <TouchableOpacity
-                style={styles.cardBody}
-                onPress={onPress}
-                activeOpacity={0.8}
-            >
-                <KeyValueRow label="Owner" value={getValue(company.ownerName)} />
-                <KeyValueRow label="Salesperson" value={getValue(company.salesperson)} />
-                <KeyValueRow label="Location" value={formatLocation()} isLast />
-            </TouchableOpacity>
-
-            {/* Expandable Content */}
-            {expanded && (
-                <View style={styles.expandedContent}>
-                    <KeyValueRow
-                        label="Website"
-                        value={getValue(company.website)}
-                        valueColor={company.website ? Colors.info : Colors.textSecondary}
-                    />
-                    <KeyValueRow label="Industry" value={getValue(company.industry)} />
-                    <KeyValueRow label="GSTIN" value={getValue(company.gstin)} />
-                    <KeyValueRow
-                        label="Created By"
-                        value={company.createdBy?.name
-                            ? `${company.createdBy.name}${company.createdBy.email ? ` (${company.createdBy.email})` : ''}`
-                            : 'N/A'
-                        }
-                    />
-                    <KeyValueRow label="Created At" value={formatDateValue(company.createdAt)} />
-                    <KeyValueRow label="Updated At" value={formatDateValue(company.updatedAt)} isLast />
-                </View>
-            )}
-
-            {/* Expandable Section Toggle */}
-            <TouchableOpacity
-                style={styles.expandToggle}
-                onPress={toggleExpand}
-                activeOpacity={0.7}
-            >
-                <AppText size="sm" weight="medium" color={Colors.primary}>
-                    {expanded ? 'View Less' : 'View More'}
-                </AppText>
-                <Icon
-                    name={expanded ? 'chevron-up' : 'chevron-down'}
-                    size={ms(18)}
-                    color={Colors.primary}
-                />
-            </TouchableOpacity>
+            {/* Action strip */}
+            <View style={styles.actionStrip}>
+                <TouchableOpacity style={styles.actionPill} onPress={() => onEdit?.(company)}>
+                    <IonIcon name="create-outline" size={14} color={Colors.info} />
+                    <Text style={[styles.actionPillText, { color: Colors.info }]}>Edit</Text>
+                </TouchableOpacity>
+                {company.phone ? (
+                    <TouchableOpacity style={styles.actionPill} onPress={() => Linking.openURL(`tel:${company.phone}`)}>
+                        <IonIcon name="call-outline" size={14} color={Colors.primary} />
+                        <Text style={[styles.actionPillText, { color: Colors.primary }]}>Call</Text>
+                    </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity style={styles.actionPill} onPress={() => onDelete?.(company)}>
+                    <IonIcon name="trash-outline" size={14} color={Colors.danger} />
+                    <Text style={[styles.actionPillText, { color: Colors.danger }]}>Remove</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
@@ -197,101 +118,53 @@ const DashboardScreen = ({ navigation }) => {
     const searchTimeoutRef = useRef(null);
     const currentSearchRef = useRef('');
     const isInitialLoadRef = useRef(true);
+    const nav = useNavigation();
 
-    // Debounced search effect
+    // Debounced search
     useEffect(() => {
-        // Skip on initial mount - let the other useEffect handle it
-        if (isInitialLoadRef.current) {
-            return;
-        }
-
-        // Clear any existing timeout
-        if (searchTimeoutRef.current) {
-            clearTimeout(searchTimeoutRef.current);
-        }
-
-        // Store current search query
+        if (isInitialLoadRef.current) return;
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         currentSearchRef.current = searchQuery;
-
-        // If search query is empty, fetch all companies immediately
-        if (!searchQuery.trim()) {
-            fetchCompanies(1, false, '');
-            return;
-        }
-
-        // Debounce the search API call (500ms)
+        if (!searchQuery.trim()) { fetchCompanies(1, false, ''); return; }
         searchTimeoutRef.current = setTimeout(() => {
             fetchCompanies(1, false, searchQuery.trim());
         }, 300);
-
-        // Cleanup timeout on unmount or query change
-        return () => {
-            if (searchTimeoutRef.current) {
-                clearTimeout(searchTimeoutRef.current);
-            }
-        };
+        return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
     }, [searchQuery]);
 
-    // Fetch companies on mount (initial load only)
     useEffect(() => {
         fetchCompanies(1, true, '');
         isInitialLoadRef.current = false;
     }, []);
 
-    // Refresh companies when screen comes back into focus (after editing)
     useFocusEffect(
         useCallback(() => {
-            // Only refresh if we're not already loading
-            if (!loading) {
-                fetchCompanies(1, true);
-            }
+            if (!loading) fetchCompanies(1, true);
         }, [])
     );
 
     const fetchCompanies = async (pageNum = 1, showLoader = false, search = '') => {
         try {
-            // Only show loading spinner on initial load, not during search
-            if (showLoader) {
-                setLoading(true);
-            } else if (pageNum > 1) {
-                setLoadingMore(true);
-            }
+            if (showLoader) setLoading(true);
+            else if (pageNum > 1) setLoadingMore(true);
 
-            // Build params with search
             const params = { page: pageNum, limit: LIMIT };
-            if (search) {
-                params.search = search;
-            }
+            if (search) params.search = search;
 
             const response = await companiesAPI.getAll(params);
-
-            console.log('Companies API Response:', response, 'Search:', search);
-
-            // Check if this response is still relevant (search query hasn't changed)
-            if (search !== currentSearchRef.current && search !== '') {
-                console.log('Search query changed, discarding stale response');
-                return;
-            }
+            if (search !== currentSearchRef.current && search !== '') return;
 
             if (response.success) {
                 const companiesData = response.data?.data || response.data?.companies || response.data || [];
                 const newCompanies = Array.isArray(companiesData) ? companiesData : [];
-
-                if (pageNum === 1) {
-                    setCompanies(newCompanies);
-                } else {
-                    setCompanies(prev => [...prev, ...newCompanies]);
-                }
-
-                // Check if there are more pages
+                if (pageNum === 1) setCompanies(newCompanies);
+                else setCompanies(prev => [...prev, ...newCompanies]);
                 setHasMore(newCompanies.length === LIMIT);
                 setPage(pageNum);
             } else {
-                console.error('Failed to fetch companies:', response.error);
                 showError('Error', response.error || 'Failed to load companies');
             }
         } catch (error) {
-            console.error('Error fetching companies:', error);
             showError('Error', 'Failed to load companies');
         } finally {
             setLoading(false);
@@ -312,407 +185,232 @@ const DashboardScreen = ({ navigation }) => {
         }
     }, [loadingMore, hasMore, loading, page, searchQuery]);
 
-    const renderHeader = () => (
-        <View style={styles.header}>
-            <View style={styles.headerLeft}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
-                </TouchableOpacity>
-                <View>
-                    <AppText size="sm" color={Colors.textSecondary}>
-                        Manage
-                    </AppText>
-                    <AppText size="xl" weight="bold">
-                        Companies
-                    </AppText>
-                </View>
-            </View>
-            <View style={styles.headerActions}>
-                <TouchableOpacity
-                    style={styles.profileButton}
-                    onPress={() => navigation.navigate('Profile')}
-                >
-                    <Icon name="account-circle" size={ms(24)} color={Colors.textPrimary} />
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-
-    // Search Bar Component
-    const renderSearchBar = () => (
-        <View style={styles.searchContainer}>
-            <Icon name="magnify" size={ms(20)} color={Colors.textMuted} style={styles.searchIcon} />
-            <TextInput
-                style={styles.searchInput}
-                placeholder="Search companies..."
-                placeholderTextColor={Colors.textMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Icon name="close-circle" size={ms(18)} color={Colors.textMuted} />
-                </TouchableOpacity>
-            )}
-        </View>
-    );
-
-    const renderSectionHeader = () => (
-        <View style={styles.sectionHeader}>
-            <AppText size="lg" weight="semiBold">
-                Companies
-            </AppText>
-            <AppButton
-                title="Add Company"
-                icon={'plus'}
-                onPress={() => navigation.navigate('AddCompany')}
-                size="small"
-                fullWidth={false}
-            />
-        </View>
-    );
-
-    const nav = useNavigation();
-
     const handleEditCompany = (company) => {
-        console.log('Navigating to EditCompany with:', company);
-        console.log('Navigation object:', nav);
         nav.navigate('EditCompany', { company });
     };
 
     const handleDeleteCompany = (company) => {
-        // TODO: Implement delete confirmation
-        console.log('Delete company:', company._id);
+        Alert.alert('Delete Company', `Remove "${company.name}"?`, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: () => console.log('Delete:', company._id) },
+        ]);
     };
-
-    const renderCompanyCard = ({ item: company }) => (
-        <CompanyCard
-            company={company}
-            onPress={() => navigation.navigate('CompanDetails', { company })}
-            onEdit={handleEditCompany}
-            onDelete={handleDeleteCompany}
-        />
-    );
 
     const renderFooter = () => {
         if (!loadingMore) return null;
-
         return (
             <View style={styles.footerLoader}>
                 <ActivityIndicator size="small" color={Colors.primary} />
-                <AppText size="sm" color={Colors.textMuted} style={styles.footerText}>
-                    Loading more companies...
-                </AppText>
             </View>
         );
     };
 
     const renderEmpty = () => {
         if (loading) return null;
-
         return (
             <View style={styles.emptyState}>
-                <Icon name="office-building" size={ms(60)} color={Colors.textMuted} />
-                <AppText size="lg" weight="semiBold" color={Colors.textSecondary} style={styles.emptyTitle}>
-                    No Companies Found
-                </AppText>
-                <AppText size="sm" color={Colors.textMuted} style={styles.emptySubtitle}>
-                    {searchQuery ? 'Try adjusting your search' : 'Start by adding your first company'}
-                </AppText>
-                <AppButton
-                    title="Add Company"
-                    onPress={() => navigation.navigate('AddCompany')}
-                    icon="plus"
-                    style={styles.emptyButton}
-                />
+                <View style={styles.emptyCircle}>
+                    <IonIcon name="business" size={ms(40)} color={Colors.primary} />
+                </View>
+                <Text style={styles.emptyTitle}>No companies yet</Text>
+                <Text style={styles.emptySubtitle}>Tap + to add your first company</Text>
             </View>
         );
     };
 
-    const renderListHeader = () => (
-        <View style={styles.listHeader}>
-            {renderHeader()}
-            {renderSearchBar()}
-            {renderSectionHeader()}
-        </View>
-    );
-
-    if (loading) {
-        return (
-            <SafeAreaView style={styles.container} edges={['top']}>
-                <View style={styles.loadingHeaderContainer}>
-                    {renderHeader()}
-                </View>
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={Colors.primary} />
-                    <AppText size="base" color={Colors.textMuted} style={styles.loadingText}>
-                        Loading companies...
-                    </AppText>
-                </View>
-            </SafeAreaView>
-        );
-    }
-
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.headerContainer}>
-                {renderListHeader()}
-            </View>
-            <FlatList
-                data={companies}
-                keyExtractor={(item) => item._id || item.id}
-                renderItem={renderCompanyCard}
-                // ListHeaderComponent={renderListHeader}
-                ListFooterComponent={renderFooter}
-                ListEmptyComponent={renderEmpty}
-                onEndReached={loadMore}
-                onEndReachedThreshold={0.5}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        colors={[Colors.primary]}
-                        tintColor={Colors.primary}
+        <View style={styles.container}>
+            <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+                {/* Header — matching Expo CompaniesScreen */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <IonIcon name="arrow-back" size={22} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                    <View style={styles.headerCenter}>
+                        <Text style={styles.headerTitle}>Companies</Text>
+                        <Text style={styles.headerCount}>{companies.length} total</Text>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.addBtnRound}
+                        onPress={() => navigation.navigate('AddCompany')}
+                    >
+                        <IonIcon name="add" size={22} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Search */}
+                <View style={styles.searchWrap}>
+                    <View style={styles.searchBar}>
+                        <IonIcon name="search" size={16} color={Colors.textTertiary} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search companies..."
+                            placeholderTextColor={Colors.textTertiary}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                        {searchQuery ? (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <IonIcon name="close-circle" size={16} color={Colors.textTertiary} />
+                            </TouchableOpacity>
+                        ) : null}
+                    </View>
+                </View>
+
+                {/* List */}
+                {loading ? (
+                    <View style={styles.centered}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                    </View>
+                ) : (
+                    <FlatList
+                        data={companies}
+                        keyExtractor={(item) => item._id || item.id || String(Math.random())}
+                        contentContainerStyle={styles.listContent}
+                        showsVerticalScrollIndicator={false}
+                        renderItem={({ item }) => (
+                            <CompanyCard
+                                company={item}
+                                onPress={() => navigation.navigate('CompanyDetails', { company: item })}
+                                onEdit={handleEditCompany}
+                                onDelete={handleDeleteCompany}
+                            />
+                        )}
+                        ListEmptyComponent={renderEmpty}
+                        ListFooterComponent={renderFooter}
+                        onEndReached={loadMore}
+                        onEndReachedThreshold={0.5}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={[Colors.primary]}
+                            />
+                        }
                     />
-                }
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-            />
-        </SafeAreaView>
+                )}
+            </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.background,
-    },
-    headerContainer: {
-        paddingHorizontal: wp(4),
-    },
-    listContent: {
-        paddingHorizontal: wp(4),
-        paddingTop: vs(5),
-        paddingBottom: vs(20),
-    },
-    listHeader: {
-        marginBottom: vs(16),
-    },
-    loadingHeaderContainer: {
-        paddingHorizontal: wp(4),
-    },
+    container: { flex: 1, backgroundColor: Colors.background },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+    // Header — matching Expo
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: vs(16),
-    },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
-    },
-    backButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
-    },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
-    },
-    notificationButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
-    },
-    profileButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
-    },
-    notificationBadge: {
-        position: 'absolute',
-        top: ms(8),
-        right: ms(8),
-        width: ms(16),
-        height: ms(16),
-        borderRadius: ms(8),
-        backgroundColor: Colors.error,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    sectionHeaderTitle: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    addButton: {
-        paddingHorizontal: Spacing.md,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: Spacing.md,
-    },
-
-    // Company Card Styles
-    companyCard: {
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.lg,
-        marginBottom: vs(12),
-        ...Shadow.md,
-        overflow: 'hidden',
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: Spacing.md,
-        backgroundColor: Colors.background,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-    },
-    cardHeaderContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    iconContainer: {
-        marginRight: ms(10),
-    },
-    companyTitleContainer: {
-        flex: 1,
-    },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.xs,
-    },
-    actionIconButton: {
-        width: ms(36),
-        height: ms(36),
-        borderRadius: BorderRadius.md,
-        backgroundColor: Colors.background,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: Colors.border,
-    },
-    cardBody: {
-        padding: Spacing.md,
-    },
-
-    // Key-Value Row Styles
-    keyValueRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: vs(8),
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-    },
-    keyValueRowLast: {
-        borderBottomWidth: 0,
-    },
-    keyText: {
-        flex: 0.4,
-    },
-    valueText: {
-        flex: 0.6,
-        textAlign: 'right',
-    },
-
-    // Expand Toggle Styles
-    expandToggle: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: Spacing.sm,
-        borderTopWidth: 1,
-        borderTopColor: Colors.border,
-        backgroundColor: Colors.background,
-        gap: Spacing.xs,
-    },
-
-    // Expanded Content Styles
-    expandedContent: {
-        paddingHorizontal: Spacing.md,
+        paddingHorizontal: Spacing.lg,
         paddingTop: Spacing.sm,
-        backgroundColor: Colors.white,
-        borderTopWidth: 1,
-        borderTopColor: Colors.border,
+        paddingBottom: Spacing.md,
     },
-
-    // Footer & Empty Styles
-    footerLoader: {
-        flexDirection: 'row',
+    backBtn: {
+        width: ms(40),
+        height: ms(40),
+        borderRadius: ms(20),
+        backgroundColor: Colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: vs(20),
-    },
-    footerText: {
-        marginLeft: Spacing.sm,
-    },
-    emptyState: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: vs(60),
-    },
-    emptyTitle: {
-        marginTop: vs(16),
-    },
-    emptySubtitle: {
-        marginTop: vs(8),
-        textAlign: 'center',
-    },
-    emptyButton: {
-        marginTop: vs(24),
-    },
-
-    // Search Bar Styles
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.lg,
-        paddingHorizontal: Spacing.md,
-        height: vs(48),
-        marginBottom: vs(16),
         ...Shadow.sm,
     },
-    searchIcon: {
-        marginRight: Spacing.sm,
+    headerCenter: { flex: 1, marginLeft: Spacing.md },
+    headerTitle: { fontSize: ms(22), fontWeight: '800', color: Colors.textPrimary },
+    headerCount: { fontSize: ms(11), color: Colors.textTertiary, marginTop: 1 },
+    addBtnRound: {
+        width: ms(42),
+        height: ms(42),
+        borderRadius: ms(14),
+        backgroundColor: Colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    // Search
+    searchWrap: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.md,
+        paddingHorizontal: Spacing.md,
+        height: ms(42),
+        borderWidth: 1,
+        borderColor: Colors.surfaceBorder,
     },
     searchInput: {
         flex: 1,
+        marginLeft: Spacing.sm,
         fontSize: ms(14),
         color: Colors.textPrimary,
-        height: '100%',
     },
+
+    // List
+    listContent: { paddingHorizontal: Spacing.lg, paddingBottom: ms(100) },
+
+    // Card — matching Expo CompaniesScreen
+    card: {
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.xl,
+        padding: ms(16),
+        marginBottom: Spacing.md,
+        borderLeftWidth: ms(3),
+        borderLeftColor: Colors.primary,
+        ...Shadow.sm,
+    },
+    cardTop: { flexDirection: 'row', alignItems: 'center' },
+    industryIcon: {
+        width: ms(44),
+        height: ms(44),
+        borderRadius: ms(14),
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cardTopText: { flex: 1, marginLeft: Spacing.md },
+    companyName: { fontSize: ms(16), fontWeight: '700', color: Colors.textPrimary },
+    industryTag: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+        marginTop: 4,
+    },
+    industryTagText: { fontSize: ms(10), fontWeight: '600' },
+
+    // Metrics
+    metricsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: ms(10), marginTop: Spacing.md },
+    metricItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    metricText: { fontSize: ms(11), color: Colors.textSecondary },
+
+    // Actions
+    actionStrip: {
+        flexDirection: 'row',
+        gap: Spacing.md,
+        marginTop: Spacing.md,
+        paddingTop: Spacing.sm,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: Colors.divider,
+    },
+    actionPill: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    actionPillText: { fontSize: ms(12), fontWeight: '600' },
+
+    // Empty
+    emptyState: { alignItems: 'center', paddingTop: ms(80) },
+    emptyCircle: {
+        width: ms(80),
+        height: ms(80),
+        borderRadius: 40,
+        backgroundColor: Colors.primaryBackground,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: Spacing.lg,
+    },
+    emptyTitle: { fontSize: ms(18), fontWeight: '700', color: Colors.textPrimary },
+    emptySubtitle: { fontSize: ms(13), color: Colors.textTertiary, marginTop: 4 },
+
+    // Footer
+    footerLoader: { paddingVertical: Spacing.md, alignItems: 'center' },
 });
 
 export default DashboardScreen;

@@ -11,7 +11,7 @@ import {
     ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors, ROUTES } from '../../constants';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs, wp } from '../../utils/Responsive';
@@ -24,7 +24,7 @@ const ORGANIZATION_SETTINGS = [
         id: 'companies',
         title: 'Companies',
         subtitle: 'Manage company profiles',
-        icon: 'office-building',
+        icon: 'business',
         iconColor: '#3b82f6',
         route: ROUTES.DASHBOARD,
     },
@@ -32,7 +32,7 @@ const ORGANIZATION_SETTINGS = [
         id: 'contacts',
         title: 'Contacts',
         subtitle: 'Manage CRM contacts',
-        icon: 'account-multiple',
+        icon: 'people',
         iconColor: '#10b981',
         route: ROUTES.CONTACTS,
     },
@@ -40,7 +40,7 @@ const ORGANIZATION_SETTINGS = [
         id: 'reports',
         title: 'Reports',
         subtitle: 'View detailed reports and analytics',
-        icon: 'chart-bar',
+        icon: 'bar-chart',
         iconColor: '#f59e0b',
         route: ROUTES.REPORTS,
     },
@@ -48,7 +48,7 @@ const ORGANIZATION_SETTINGS = [
         id: 'followUpEngine',
         title: 'Follow Up Engine',
         subtitle: 'Configure follow-up automation',
-        icon: 'clock-check',
+        icon: 'time',
         iconColor: '#8b5cf6',
         route: ROUTES.FOLLOW_UP_ENGINE,
     },
@@ -72,7 +72,7 @@ const SettingsMenuItem = ({ item, onPress }) => (
                 {item.subtitle}
             </AppText>
         </View>
-        <Icon name="chevron-right" size={ms(22)} color={Colors.textMuted} />
+        <Icon name="chevron-forward" size={ms(22)} color={Colors.textMuted} />
     </TouchableOpacity>
 );
 
@@ -104,7 +104,7 @@ const SettingsScreen = ({ navigation }) => {
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
+                    <Icon name="arrow-back" size={ms(24)} color={Colors.textPrimary} />
                 </TouchableOpacity>
                 <AppText size="xl" weight="bold">
                     Others

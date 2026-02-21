@@ -1,11 +1,12 @@
 /**
  * Tasks Screen
- * Display and manage tasks in a list view with pagination (similar to Leads screen)
+ * Display and manage tasks in a list view with pagination — UI matched to Expo
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
+    Text,
     StyleSheet,
     TouchableOpacity,
     FlatList,
@@ -18,7 +19,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import IonIcon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs, wp } from '../../utils/Responsive';
@@ -26,6 +27,7 @@ import { AppText, AppButton } from '../../components';
 import { tasksAPI } from '../../api';
 import { showError } from '../../utils';
 import { useAuth } from '../../context';
+import CommonHeader from '../../components/CommonHeader';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -34,172 +36,149 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const LIMIT = 50;
 
-// Task Card Component (clean card view)
-const TaskCard = ({ task, onPress, onEdit, onDelete }) => {
-    // Helper to get priority color
-    const getPriorityColor = () => {
-        const priorityColors = {
-            high: Colors.error,
-            medium: '#f97316',
-            low: Colors.success,
-            urgent: '#dc2626',
-        };
-        return priorityColors[task.priority?.toLowerCase()] || Colors.textMuted;
-    };
+// Type icon configs matching Expo
+const TYPE_ICONS = {
+    Call: { icon: 'call', color: '#4D8733', bg: '#EEF5E6' },
+    Email: { icon: 'mail', color: '#3B82F6', bg: '#EFF6FF' },
+    Meeting: { icon: 'calendar', color: '#8B5CF6', bg: '#F3F0FF' },
+    Document: { icon: 'document-text', color: '#F59E0B', bg: '#FFFBEB' },
+};
 
-    // Helper to get status color
-    const getStatusColor = () => {
-        const statusColors = {
-            open: '#f97316',
-            pending: '#f97316',
-            in_progress: Colors.info,
-            'in progress': Colors.info,
-            completed: Colors.success,
-            cancelled: Colors.textMuted,
-        };
-        return statusColors[task.status?.toLowerCase()] || Colors.textMuted;
-    };
+const PRIORITY_CONFIG = {
+    High: { color: '#EF4444', bg: '#FEF2F2' },
+    Medium: { color: '#F59E0B', bg: '#FFFBEB' },
+    Low: { color: '#3B82F6', bg: '#EFF6FF' },
+    Urgent: { color: '#dc2626', bg: '#FEF2F2' },
+    high: { color: '#EF4444', bg: '#FEF2F2' },
+    medium: { color: '#F59E0B', bg: '#FFFBEB' },
+    low: { color: '#3B82F6', bg: '#EFF6FF' },
+    urgent: { color: '#dc2626', bg: '#FEF2F2' },
+};
 
-    // Helper to get status display name
-    const getStatusName = () => {
-        const statusNames = {
-            open: 'Pending',
-            pending: 'Pending',
-            in_progress: 'In Progress',
-            'in progress': 'In Progress',
-            completed: 'Completed',
-            cancelled: 'Cancelled',
-        };
-        return statusNames[task.status?.toLowerCase()] || task.status || 'Pending';
-    };
+const FILTERS = ['All', 'Pending', 'Completed'];
 
-    // Helper to get value or N/A
-    const getValue = (value) => {
-        if (value === undefined || value === null || value === '') {
-            return 'N/A';
-        }
-        if (typeof value === 'object') {
-            return value.name || value.title || 'N/A';
-        }
-        return value;
-    };
-
-    // Format date helper - matches web format "Jan 22, 2026"
-    const formatDateValue = (dateString) => {
-        if (!dateString) return 'N/A';
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-            });
-        } catch {
-            return 'N/A';
-        }
-    };
-
-    // Get assigned to name
-    const getAssignedTo = () => {
-        if (task.assignedTo) {
-            if (typeof task.assignedTo === 'object') {
-                return task.assignedTo.name || task.assignedTo.firstName || 'N/A';
-            }
-            return task.assignedTo;
-        }
+// Format due date helper matching Expo
+function formatDueDate(dateStr) {
+    if (!dateStr) return 'No date';
+    try {
+        const now = new Date();
+        const due = new Date(dateStr);
+        const diffMs = due.getTime() - now.getTime();
+        const diffDays = Math.floor(diffMs / 86400000);
+        if (diffDays < -1) return `${Math.abs(diffDays)}d overdue`;
+        if (diffDays === -1) return 'Yesterday';
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return 'Tomorrow';
+        return due.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+    } catch {
         return 'N/A';
-    };
+    }
+}
 
-    // Get related to (lead/deal)
+function isDueOrOverdue(dateStr) {
+    if (!dateStr) return false;
+    return new Date(dateStr).getTime() < Date.now();
+}
+
+// Task Card Component — matching Expo design
+const TaskCard = ({ task, onPress, onEdit, onDelete, onToggleComplete }) => {
+    const status = task.status?.toLowerCase() || 'pending';
+    const isDone = status === 'completed';
+    const taskType = task.taskType || task.type || 'Call';
+    const typeConfig = TYPE_ICONS[taskType] || TYPE_ICONS.Call;
+    const priority = task.priority || 'Medium';
+    const prioConfig = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.Medium;
+    const isOverdue = !isDone && isDueOrOverdue(task.dueDate);
+
     const getRelatedTo = () => {
         if (task.lead) {
-            if (typeof task.lead === 'object') {
-                return task.lead.title || task.lead.name || 'N/A';
-            }
+            if (typeof task.lead === 'object') return task.lead.title || task.lead.name || null;
             return task.lead;
         }
         if (task.relatedTo) {
             return typeof task.relatedTo === 'object' ? task.relatedTo.name : task.relatedTo;
         }
-        return 'N/A';
+        return null;
     };
 
-    // Key-Value Row Component
-    const KeyValueRow = ({ label, value, valueColor, isLast }) => (
-        <View style={[styles.keyValueRow, isLast && styles.keyValueRowLast]}>
-            <AppText size="sm" color={Colors.textMuted} style={styles.keyText}>
-                {label}
-            </AppText>
-            <AppText
-                size="sm"
-                weight="medium"
-                color={valueColor || Colors.textPrimary}
-                style={styles.valueText}
-                numberOfLines={1}
-            >
-                {value}
-            </AppText>
-        </View>
-    );
+    const getAssignedTo = () => {
+        if (task.assignedTo) {
+            if (typeof task.assignedTo === 'object') return task.assignedTo.name || task.assignedTo.firstName || null;
+            return task.assignedTo;
+        }
+        return null;
+    };
+
+    const relatedTo = getRelatedTo();
+    const assignedTo = getAssignedTo();
 
     return (
-        <View style={styles.taskCard}>
-            {/* Card Header */}
-            <View style={styles.cardHeader}>
-                <TouchableOpacity
-                    style={styles.cardHeaderContent}
-                    onPress={onPress}
-                    activeOpacity={0.7}
-                >
-                    <View style={styles.iconContainer}>
-                        <Icon name="clipboard-check" size={ms(20)} color={Colors.primary} />
-                    </View>
-                    <View style={styles.taskTitleContainer}>
-                        <AppText size="base" weight="bold" numberOfLines={1}>
-                            {getValue(task.title) || 'Untitled Task'}
-                        </AppText>
-                    </View>
-                </TouchableOpacity>
+        <View style={[styles.taskCard, isDone && styles.taskCardDone]}>
+            {/* Left accent */}
+            <View style={[styles.taskAccent, { backgroundColor: isDone ? Colors.success : typeConfig.color }]} />
 
-                {/* Edit & Delete Icons */}
-                <View style={styles.headerActions}>
+            <View style={styles.taskContent}>
+                {/* Top row: checkbox + title + type icon */}
+                <View style={styles.taskTopRow}>
                     <TouchableOpacity
-                        style={styles.actionIconButton}
-                        onPress={() => onEdit?.(task)}
-                        activeOpacity={0.7}
+                        style={[styles.checkbox, isDone && styles.checkboxDone]}
+                        onPress={() => onToggleComplete?.(task)}
                     >
-                        <Icon name="pencil" size={ms(18)} color={Colors.info} />
+                        {isDone ? <IonIcon name="checkmark" size={14} color="#fff" /> : null}
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.taskTitleWrap} onPress={onPress} activeOpacity={0.7}>
+                        <Text style={[styles.taskTitle, isDone && styles.taskTitleDone]} numberOfLines={2}>
+                            {task.title || 'Untitled Task'}
+                        </Text>
+                        {relatedTo ? (
+                            <Text style={styles.taskRelated} numberOfLines={1}>
+                                <IonIcon name="person-outline" size={11} color={Colors.textTertiary} /> {relatedTo}
+                            </Text>
+                        ) : null}
+                    </TouchableOpacity>
+                    <View style={[styles.typeIcon, { backgroundColor: typeConfig.bg }]}>
+                        <IonIcon name={typeConfig.icon} size={16} color={typeConfig.color} />
+                    </View>
+                </View>
+
+                {/* Tags row */}
+                <View style={styles.tagsRow}>
+                    <View style={[styles.tag, { backgroundColor: prioConfig.bg }]}>
+                        <IonIcon name="flag" size={10} color={prioConfig.color} />
+                        <Text style={[styles.tagText, { color: prioConfig.color }]}>
+                            {typeof priority === 'string' ? priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase() : priority}
+                        </Text>
+                    </View>
+                    <View style={[styles.tag, { backgroundColor: isOverdue ? Colors.dangerBg : Colors.background }]}>
+                        <IonIcon name="time-outline" size={10} color={isOverdue ? Colors.danger : Colors.textSecondary} />
+                        <Text style={[styles.tagText, { color: isOverdue ? Colors.danger : Colors.textSecondary }]}>
+                            {formatDueDate(task.dueDate)}
+                        </Text>
+                    </View>
+                    {assignedTo ? (
+                        <View style={[styles.tag, { backgroundColor: Colors.background }]}>
+                            <IonIcon name="person-outline" size={10} color={Colors.textTertiary} />
+                            <Text style={[styles.tagText, { color: Colors.textTertiary }]}>{assignedTo}</Text>
+                        </View>
+                    ) : null}
+                </View>
+
+                {/* Actions */}
+                <View style={styles.actionRow}>
+                    <TouchableOpacity
+                        style={styles.actionBtn}
+                        onPress={() => onEdit?.(task)}
+                    >
+                        <IonIcon name="create-outline" size={15} color={Colors.info} />
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={styles.actionIconButton}
+                        style={styles.actionBtn}
                         onPress={() => onDelete?.(task)}
-                        activeOpacity={0.7}
                     >
-                        <Icon name="delete" size={ms(18)} color={Colors.error} />
+                        <IonIcon name="trash-outline" size={15} color={Colors.danger} />
                     </TouchableOpacity>
                 </View>
             </View>
-
-            {/* Card Body - Only 5 Fields */}
-            <TouchableOpacity
-                style={styles.cardBody}
-                onPress={onPress}
-                activeOpacity={0.8}
-            >
-                <KeyValueRow label="Due Date" value={formatDateValue(task.dueDate)} />
-                <KeyValueRow
-                    label="Priority"
-                    value={getValue(task.priority)?.charAt(0).toUpperCase() + getValue(task.priority)?.slice(1).toLowerCase()}
-                    valueColor={getPriorityColor()}
-                />
-                <KeyValueRow
-                    label="Status"
-                    value={getStatusName()}
-                    valueColor={getStatusColor()}
-                />
-                <KeyValueRow label="Assigned To" value={getAssignedTo()} />
-                <KeyValueRow label="Related To" value={getRelatedTo()} isLast />
-            </TouchableOpacity>
         </View>
     );
 };
@@ -212,7 +191,9 @@ const TasksScreen = ({ navigation }) => {
     const isInitialLoadRef = useRef(true);
 
     // State
+    const [filter, setFilter] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchOpen, setSearchOpen] = useState(false);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -220,37 +201,29 @@ const TasksScreen = ({ navigation }) => {
     const [hasMore, setHasMore] = useState(true);
     const [tasks, setTasks] = useState([]);
 
+    // Filter tasks by status
+    const filtered = tasks.filter((t) => {
+        if (filter === 'Pending') return t.status?.toLowerCase() !== 'completed';
+        if (filter === 'Completed') return t.status?.toLowerCase() === 'completed';
+        return true;
+    });
+
+    const pendingCount = tasks.filter((t) => t.status?.toLowerCase() !== 'completed').length;
+
     // Debounced search effect
     useEffect(() => {
-        // Skip on initial mount - let the other useEffect handle it
-        if (isInitialLoadRef.current) {
-            return;
-        }
-
-        // Clear any existing timeout
-        if (searchTimeoutRef.current) {
-            clearTimeout(searchTimeoutRef.current);
-        }
-
-        // Store current search query
+        if (isInitialLoadRef.current) return;
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         currentSearchRef.current = searchQuery;
-
-        // If search query is empty, fetch all tasks immediately
         if (!searchQuery.trim()) {
             fetchTasks(1, false, '');
             return;
         }
-
-        // Debounce the search API call (300ms)
         searchTimeoutRef.current = setTimeout(() => {
             fetchTasks(1, false, searchQuery.trim());
         }, 300);
-
-        // Cleanup timeout on unmount or query change
         return () => {
-            if (searchTimeoutRef.current) {
-                clearTimeout(searchTimeoutRef.current);
-            }
+            if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         };
     }, [searchQuery]);
 
@@ -262,37 +235,23 @@ const TasksScreen = ({ navigation }) => {
 
     const fetchTasks = async (pageNum = 1, showLoader = false, search = '') => {
         try {
-            // Only show loading spinner on initial load, not during search
             if (showLoader) {
                 setLoading(true);
             } else if (pageNum > 1) {
                 setLoadingMore(true);
             }
-
-            // Build params with search
             const params = { page: pageNum, limit: LIMIT };
-            if (search) {
-                params.search = search;
-            }
-
+            if (search) params.search = search;
             const response = await tasksAPI.getAll(params);
-
-            // Check if this response is still relevant (search query hasn't changed)
-            if (search !== currentSearchRef.current && search !== '') {
-                return;
-            }
-
+            if (search !== currentSearchRef.current && search !== '') return;
             if (response.success) {
                 const tasksData = response.data?.data?.items || [];
                 const newTasks = Array.isArray(tasksData) ? tasksData : [];
-
                 if (pageNum === 1) {
                     setTasks(newTasks);
                 } else {
                     setTasks(prev => [...prev, ...newTasks]);
                 }
-
-                // Check if there are more pages
                 setHasMore(newTasks.length === LIMIT);
                 setPage(pageNum);
             } else {
@@ -321,71 +280,6 @@ const TasksScreen = ({ navigation }) => {
         }
     }, [loadingMore, hasMore, loading, page, searchQuery]);
 
-    // Render header
-    const renderHeader = () => (
-        <View style={styles.header}>
-            <View>
-                <AppText size="sm" color={Colors.textSecondary}>
-                    Welcome back,
-                </AppText>
-                <AppText size="xl" weight="bold">
-                    {user?.name || 'User'}
-                </AppText>
-            </View>
-            <View style={styles.headerActions}>
-                <TouchableOpacity style={styles.notificationButton}>
-                    <Icon name="bell-outline" size={ms(24)} color={Colors.textPrimary} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.profileButton}
-                    onPress={() => navigation.navigate('Profile')}
-                >
-                    <Icon name="account-circle" size={ms(24)} color={Colors.textPrimary} />
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-
-    // Search Bar
-    const renderSearchBar = () => (
-        <View style={styles.searchContainer}>
-            <Icon name="magnify" size={ms(20)} color={Colors.textMuted} style={styles.searchIcon} />
-            <TextInput
-                style={styles.searchInput}
-                placeholder="Search tasks..."
-                placeholderTextColor={Colors.textMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-            />
-            {searchQuery && searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Icon name="close-circle" size={ms(18)} color={Colors.textMuted} />
-                </TouchableOpacity>
-            )}
-        </View>
-    );
-
-    // Section Header with Add Button
-    const renderSectionHeader = () => (
-        <View style={styles.sectionHeader}>
-            <View>
-                <AppText size="lg" weight="semiBold">
-                    Tasks
-                </AppText>
-                <AppText size="xs" color={Colors.textMuted}>
-                    {tasks.length} {searchQuery ? 'found' : 'tasks'}
-                </AppText>
-            </View>
-            <AppButton
-                title="Add Task"
-                onPress={() => navigation.navigate('AddTask')}
-                fullWidth={false}
-                size="small"
-                icon="plus"
-            />
-        </View>
-    );
-
     const handleEditTask = (task) => {
         nav.navigate('EditTask', { task });
     };
@@ -399,48 +293,42 @@ const TasksScreen = ({ navigation }) => {
         navigation.navigate('TaskDetails', { task });
     };
 
+    const handleToggleComplete = (task) => {
+        // Toggle logic can be implemented here
+        console.log('Toggle complete:', task._id);
+    };
+
     const renderTaskCard = ({ item: task }) => (
         <TaskCard
             task={task}
             onPress={() => handleTaskPress(task)}
             onEdit={handleEditTask}
             onDelete={handleDeleteTask}
+            onToggleComplete={handleToggleComplete}
         />
     );
 
     const renderFooter = () => {
         if (!loadingMore) return null;
-
         return (
             <View style={styles.footerLoader}>
                 <ActivityIndicator size="small" color={Colors.primary} />
-                <AppText size="sm" color={Colors.textMuted} style={styles.footerText}>
-                    Loading more tasks...
-                </AppText>
+                <Text style={styles.footerText}>Loading more tasks...</Text>
             </View>
         );
     };
 
     const renderEmpty = () => {
         if (loading) return null;
-
         return (
             <View style={styles.emptyState}>
-                <Icon name="clipboard-text-outline" size={ms(60)} color={Colors.textMuted} />
-                <AppText size="lg" weight="semiBold" color={Colors.textSecondary} style={styles.emptyTitle}>
-                    No Tasks Found
-                </AppText>
-                <AppText size="sm" color={Colors.textMuted} style={styles.emptySubtitle}>
-                    {searchQuery ? 'Try adjusting your search' : 'Start by adding your first task'}
-                </AppText>
-                {!searchQuery && (
-                    <AppButton
-                        title="Add Task"
-                        onPress={() => navigation.navigate('AddTask')}
-                        icon="plus"
-                        style={styles.emptyButton}
-                    />
-                )}
+                <View style={styles.emptyCircle}>
+                    <IonIcon name="checkbox-outline" size={ms(40)} color={Colors.primary} />
+                </View>
+                <Text style={styles.emptyTitle}>No tasks yet</Text>
+                <Text style={styles.emptySubtitle}>
+                    {searchQuery ? 'Try adjusting your search' : 'Tap + Add Task to get started'}
+                </Text>
             </View>
         );
     };
@@ -448,14 +336,9 @@ const TasksScreen = ({ navigation }) => {
     if (loading) {
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
-                <View style={styles.headerContainer}>
-                    {renderHeader()}
-                </View>
-                <View style={styles.loadingContainer}>
+                <CommonHeader navigation={navigation} />
+                <View style={styles.centered}>
                     <ActivityIndicator size="large" color={Colors.primary} />
-                    <AppText size="base" color={Colors.textMuted} style={styles.loadingText}>
-                        Loading tasks...
-                    </AppText>
                 </View>
             </SafeAreaView>
         );
@@ -463,13 +346,75 @@ const TasksScreen = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.headerContainer}>
-                {renderHeader()}
-                {renderSearchBar()}
-                {renderSectionHeader()}
+            {/* Header */}
+            <CommonHeader navigation={navigation} />
+
+            {/* Search bar (toggle) */}
+            {searchOpen ? (
+                <View style={styles.searchWrap}>
+                    <View style={styles.searchBar}>
+                        <IonIcon name="search" size={17} color={Colors.textTertiary} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search tasks..."
+                            placeholderTextColor={Colors.textTertiary}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            autoFocus
+                        />
+                        <TouchableOpacity onPress={() => { setSearchOpen(false); setSearchQuery(''); }}>
+                            <IonIcon name="close-circle" size={17} color={Colors.textTertiary} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            ) : null}
+
+            {/* Title + Actions row */}
+            <View style={styles.titleRow}>
+                <View>
+                    <Text style={styles.sectionTitle}>Tasks</Text>
+                    <Text style={styles.subtitleText}>{pendingCount} pending</Text>
+                </View>
+                <View style={styles.titleActions}>
+                    <TouchableOpacity style={styles.iconBtn} onPress={() => setSearchOpen(!searchOpen)}>
+                        <IonIcon name="search" size={18} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.addBtn}
+                        onPress={() => navigation.navigate('AddTask')}
+                    >
+                        <IonIcon name="add" size={18} color="#fff" />
+                        <Text style={styles.addBtnText}>Add Task</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
+
+            {/* Filter pills */}
+            <View style={styles.filterRow}>
+                {FILTERS.map((f) => {
+                    const count = f === 'All' ? tasks.length :
+                        f === 'Pending' ? pendingCount :
+                            tasks.length - pendingCount;
+                    const isActive = filter === f;
+                    return (
+                        <TouchableOpacity
+                            key={f}
+                            style={[styles.filterPill, isActive && styles.filterPillActive]}
+                            onPress={() => setFilter(f)}
+                        >
+                            <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
+                                {f}
+                            </Text>
+                            <View style={[styles.filterCount, isActive && styles.filterCountActive]}>
+                                <Text style={[styles.filterCountText, isActive && { color: '#fff' }]}>{count}</Text>
+                            </View>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+
             <FlatList
-                data={tasks}
+                data={filtered}
                 keyExtractor={(item) => item._id || item.id || String(Math.random())}
                 renderItem={renderTaskCard}
                 ListFooterComponent={renderFooter}
@@ -492,194 +437,112 @@ const TasksScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.background,
-    },
-    headerContainer: {
-        paddingHorizontal: wp(4),
-    },
-    listContent: {
-        paddingHorizontal: wp(4),
-        paddingBottom: vs(100),
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: Spacing.md,
-    },
+    container: { flex: 1, backgroundColor: Colors.background },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-    // Header Styles
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: vs(16),
+    // Search
+    searchWrap: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm },
+    searchBar: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: Colors.surface, borderRadius: BorderRadius.md,
+        paddingHorizontal: Spacing.md, height: ms(42),
+        borderWidth: 1, borderColor: Colors.surfaceBorder,
     },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
-    },
-    notificationButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
-    },
-    profileButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
-    },
+    searchInput: { flex: 1, marginLeft: Spacing.sm, fontSize: ms(14), color: Colors.textPrimary },
 
-    // Search Bar Styles
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.lg,
-        paddingHorizontal: Spacing.md,
-        height: vs(48),
-        marginBottom: vs(12),
-        ...Shadow.sm,
+    // Title row
+    titleRow: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm,
     },
-    searchIcon: {
-        marginRight: Spacing.sm,
+    sectionTitle: { fontSize: ms(24), fontWeight: '800', color: Colors.textPrimary },
+    subtitleText: { fontSize: ms(12), color: Colors.textTertiary, marginTop: 1 },
+    titleActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    iconBtn: {
+        width: ms(38), height: ms(38), borderRadius: ms(12),
+        backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center', ...Shadow.sm,
     },
-    searchInput: {
-        flex: 1,
-        fontSize: ms(14),
-        color: Colors.textPrimary,
-        height: '100%',
+    addBtn: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: Colors.primary, paddingHorizontal: ms(14),
+        paddingVertical: ms(10), borderRadius: ms(14), gap: 4,
     },
+    addBtnText: { fontSize: ms(13), fontWeight: '700', color: '#fff' },
 
-    // Section Header
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: vs(12),
+    // Filter pills
+    filterRow: {
+        flexDirection: 'row', paddingHorizontal: Spacing.lg,
+        gap: Spacing.sm, marginBottom: Spacing.md,
     },
+    filterPill: {
+        flexDirection: 'row', alignItems: 'center', paddingHorizontal: ms(14),
+        paddingVertical: ms(8), borderRadius: 999,
+        backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: Colors.surfaceBorder, gap: 6,
+    },
+    filterPillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+    filterPillText: { fontSize: ms(12), fontWeight: '600', color: Colors.textSecondary },
+    filterPillTextActive: { color: '#fff' },
+    filterCount: { backgroundColor: Colors.background, borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
+    filterCountActive: { backgroundColor: 'rgba(255,255,255,0.3)' },
+    filterCountText: { fontSize: ms(10), fontWeight: '700', color: Colors.textSecondary },
 
-    // Task Card Styles (matching Lead Card)
+    listContent: { paddingHorizontal: Spacing.lg, paddingBottom: ms(100) },
+
+    // Task card — Expo style
     taskCard: {
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.card,
-        marginBottom: Spacing.md,
-        ...Shadow.sm,
+        flexDirection: 'row', backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg, marginBottom: Spacing.md,
+        overflow: 'hidden', ...Shadow.sm,
     },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
+    taskCardDone: { opacity: 0.7 },
+    taskAccent: { width: ms(4) },
+    taskContent: { flex: 1, padding: ms(14) },
+    taskTopRow: { flexDirection: 'row', alignItems: 'flex-start' },
+    checkbox: {
+        width: ms(22), height: ms(22), borderRadius: ms(7),
+        borderWidth: 2, borderColor: Colors.surfaceBorder,
+        justifyContent: 'center', alignItems: 'center', marginTop: 2,
     },
-    cardHeaderContent: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
+    checkboxDone: { backgroundColor: Colors.success, borderColor: Colors.success },
+    taskTitleWrap: { flex: 1, marginLeft: Spacing.sm },
+    taskTitle: { fontSize: ms(15), fontWeight: '600', color: Colors.textPrimary, lineHeight: ms(20) },
+    taskTitleDone: { textDecorationLine: 'line-through', color: Colors.textTertiary },
+    taskRelated: { fontSize: ms(11), color: Colors.textTertiary, marginTop: 3 },
+    typeIcon: {
+        width: ms(32), height: ms(32), borderRadius: ms(10),
+        justifyContent: 'center', alignItems: 'center', marginLeft: 8,
     },
-    iconContainer: {
-        width: ms(40),
-        height: ms(40),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.primaryBackground,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: Spacing.sm,
+    tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: Spacing.sm, paddingLeft: ms(30) },
+    tag: {
+        flexDirection: 'row', alignItems: 'center', gap: 3,
+        paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
     },
-    taskTitleContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
+    tagText: { fontSize: ms(10), fontWeight: '600' },
+    actionRow: {
+        flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.sm,
+        marginTop: Spacing.sm, paddingTop: Spacing.sm,
+        borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.divider,
     },
-    statusBadge: {
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 2,
-        borderRadius: BorderRadius.badge,
-    },
-    actionIconButton: {
-        padding: Spacing.xs,
-        marginLeft: Spacing.xs,
-    },
-    cardBody: {
-        padding: Spacing.md,
-    },
-    keyValueRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: vs(6),
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-    },
-    keyValueRowLast: {
-        borderBottomWidth: 0,
-    },
-    keyText: {
-        flex: 1,
-    },
-    valueText: {
-        flex: 2,
-        textAlign: 'right',
-    },
-    expandedContent: {
-        paddingHorizontal: Spacing.md,
-        paddingBottom: Spacing.sm,
-        borderTopWidth: 1,
-        borderTopColor: Colors.border,
-        backgroundColor: Colors.background,
-    },
-    expandToggle: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: vs(10),
-        borderTopWidth: 1,
-        borderTopColor: Colors.border,
-        gap: Spacing.xs,
+    actionBtn: {
+        width: ms(32), height: ms(32), borderRadius: ms(8),
+        backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center',
     },
 
     // Footer
     footerLoader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: vs(16),
-        gap: Spacing.sm,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        paddingVertical: vs(16), gap: Spacing.sm,
     },
-    footerText: {
-        marginLeft: Spacing.sm,
-    },
+    footerText: { fontSize: ms(13), color: Colors.textTertiary, marginLeft: Spacing.sm },
 
     // Empty State
-    emptyState: {
-        alignItems: 'center',
-        paddingVertical: vs(60),
+    emptyState: { alignItems: 'center', paddingTop: ms(80) },
+    emptyCircle: {
+        width: ms(80), height: ms(80), borderRadius: 40,
+        backgroundColor: Colors.primaryBackground, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.lg,
     },
-    emptyTitle: {
-        marginTop: vs(16),
-    },
-    emptySubtitle: {
-        marginTop: vs(8),
-        textAlign: 'center',
-    },
-    emptyButton: {
-        marginTop: vs(24),
-    },
+    emptyTitle: { fontSize: ms(18), fontWeight: '700', color: Colors.textPrimary },
+    emptySubtitle: { fontSize: ms(13), color: Colors.textTertiary, marginTop: 4 },
 });
 
 export default TasksScreen;

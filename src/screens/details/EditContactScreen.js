@@ -13,7 +13,7 @@ import {
     Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs, wp } from '../../utils/Responsive';
@@ -23,12 +23,12 @@ import { showError, showSuccess } from '../../utils';
 
 // Contact Source Options
 const CONTACT_SOURCES = [
-    { id: 'website', label: 'Website', icon: 'web' },
-    { id: 'referral', label: 'Referral', icon: 'account-group' },
-    { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin' },
-    { id: 'event', label: 'Event', icon: 'calendar' },
-    { id: 'email', label: 'Email', icon: 'email' },
-    { id: 'phone', label: 'Phone', icon: 'phone' },
+    { id: 'website', label: 'Website', icon: 'globe-outline' },
+    { id: 'referral', label: 'Referral', icon: 'people-outline' },
+    { id: 'linkedin', label: 'LinkedIn', icon: 'logo-linkedin' },
+    { id: 'event', label: 'Event', icon: 'calendar-outline' },
+    { id: 'email', label: 'Email', icon: 'mail-outline' },
+    { id: 'phone', label: 'Phone', icon: 'call-outline' },
 ];
 
 // Contact Status Options
@@ -210,7 +210,7 @@ const EditContactScreen = ({ navigation, route }) => {
                     style={styles.backButton}
                     activeOpacity={0.7}
                 >
-                    <Icon name="arrow-left" size={ms(24)} color={Colors.black} />
+                    <Icon name="arrow-back" size={ms(24)} color={Colors.black} />
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
                     <AppText size="lg" weight="bold" numberOfLines={1} color={Colors.black}>
@@ -233,12 +233,12 @@ const EditContactScreen = ({ navigation, route }) => {
                 >
                     {/* Basic Information Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="account" title="Basic Information" />
+                        <SectionHeader icon="person-outline" title="Basic Information" />
 
                         <View style={styles.row}>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="account"
+                                    icon="person-outline"
                                     label="First Name"
                                     placeholder="Enter first name"
                                     value={formData.firstName}
@@ -250,7 +250,7 @@ const EditContactScreen = ({ navigation, route }) => {
                             </View>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="account"
+                                    icon="person-outline"
                                     label="Last Name"
                                     placeholder="Enter last name"
                                     value={formData.lastName}
@@ -261,7 +261,7 @@ const EditContactScreen = ({ navigation, route }) => {
                         </View>
 
                         <InputField
-                            icon="domain"
+                            icon="business-outline"
                             label="Company"
                             placeholder="Enter company name"
                             value={formData.company}
@@ -270,7 +270,7 @@ const EditContactScreen = ({ navigation, route }) => {
                         />
 
                         <InputField
-                            icon="briefcase"
+                            icon="briefcase-outline"
                             label="Designation"
                             placeholder="Enter job title / designation"
                             value={formData.designation}
@@ -281,10 +281,10 @@ const EditContactScreen = ({ navigation, route }) => {
 
                     {/* Contact Information Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="contacts" title="Contact Information" />
+                        <SectionHeader icon="people-circle-outline" title="Contact Information" />
 
                         <InputField
-                            icon="email"
+                            icon="mail-outline"
                             label="Email Address"
                             placeholder="Enter email address"
                             value={formData.email}
@@ -298,7 +298,7 @@ const EditContactScreen = ({ navigation, route }) => {
                         <View style={styles.row}>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="phone"
+                                    icon="call-outline"
                                     label="Phone"
                                     placeholder="Enter phone"
                                     value={formData.phone}
@@ -308,7 +308,7 @@ const EditContactScreen = ({ navigation, route }) => {
                             </View>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="cellphone"
+                                    icon="phone-portrait-outline"
                                     label="Mobile"
                                     placeholder="Enter mobile"
                                     value={formData.mobile}
@@ -319,7 +319,7 @@ const EditContactScreen = ({ navigation, route }) => {
                         </View>
 
                         <InputField
-                            icon="web"
+                            icon="globe-outline"
                             label="Website"
                             placeholder="Enter website URL"
                             value={formData.website}
@@ -331,10 +331,10 @@ const EditContactScreen = ({ navigation, route }) => {
 
                     {/* Address Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="map-marker" title="Address Details" />
+                        <SectionHeader icon="location-outline" title="Address Details" />
 
                         <InputField
-                            icon="home"
+                            icon="home-outline"
                             label="Street Address"
                             placeholder="Enter street address"
                             value={formData.address}
@@ -346,7 +346,7 @@ const EditContactScreen = ({ navigation, route }) => {
                         <View style={styles.row}>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="city"
+                                    icon="storefront-outline"
                                     label="City"
                                     placeholder="Enter city"
                                     value={formData.city}
@@ -356,7 +356,7 @@ const EditContactScreen = ({ navigation, route }) => {
                             </View>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="map"
+                                    icon="map-outline"
                                     label="State"
                                     placeholder="Enter state"
                                     value={formData.state}
@@ -369,7 +369,7 @@ const EditContactScreen = ({ navigation, route }) => {
                         <View style={styles.row}>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="earth"
+                                    icon="earth-outline"
                                     label="Country"
                                     placeholder="Enter country"
                                     value={formData.country}
@@ -379,7 +379,7 @@ const EditContactScreen = ({ navigation, route }) => {
                             </View>
                             <View style={styles.halfInput}>
                                 <InputField
-                                    icon="mailbox"
+                                    icon="mail-open-outline"
                                     label="Pincode"
                                     placeholder="Enter pincode"
                                     value={formData.pincode}
@@ -392,7 +392,7 @@ const EditContactScreen = ({ navigation, route }) => {
 
                     {/* Contact Source Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="source-branch" title="Contact Source" />
+                        <SectionHeader icon="git-branch-outline" title="Contact Source" />
                         <View style={styles.optionsGrid}>
                             {CONTACT_SOURCES.map((source) => (
                                 <TouchableOpacity
@@ -424,7 +424,7 @@ const EditContactScreen = ({ navigation, route }) => {
 
                     {/* Contact Status Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="account-check" title="Contact Status" />
+                        <SectionHeader icon="checkmark-circle-outline" title="Contact Status" />
                         <View style={styles.statusContainer}>
                             {CONTACT_STATUS.map((status) => (
                                 <TouchableOpacity
@@ -450,7 +450,7 @@ const EditContactScreen = ({ navigation, route }) => {
 
                     {/* Notes Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="note-text" title="Notes" />
+                        <SectionHeader icon="document-text-outline" title="Notes" />
                         <AppInput
                             placeholder="Add any additional notes..."
                             value={formData.notes}
@@ -471,7 +471,7 @@ const EditContactScreen = ({ navigation, route }) => {
                         onPress={handleSubmit}
                         loading={loading}
                         disabled={loading}
-                        icon="content-save"
+                        icon="save-outline"
                         fullWidth
                         style={styles.updateButton}
                     />

@@ -16,7 +16,7 @@ import {
     StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs, wp } from '../../utils/Responsive';
@@ -180,12 +180,12 @@ const RegisterScreen = ({ navigation }) => {
                                 style={styles.backButton}
                                 onPress={() => navigation.goBack()}
                             >
-                                <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
+                                <Icon name="arrow-back" size={ms(24)} color={Colors.textPrimary} />
                             </TouchableOpacity>
 
                             <View style={styles.logoContainer}>
                                 <View style={styles.logo}>
-                                    <Icon name="account-plus" size={ms(40)} color={Colors.white} />
+                                    <Icon name="person-add" size={ms(40)} color={Colors.white} />
                                 </View>
                             </View>
                             <AppText size="xxl" weight="bold" style={styles.title}>
@@ -222,7 +222,7 @@ const RegisterScreen = ({ navigation }) => {
                                 placeholder="Enter your full name"
                                 value={formData.name}
                                 onChangeText={(text) => updateField('name', text)}
-                                leftIcon="account-outline"
+                                leftIcon="person-outline"
                                 error={!!errors.name}
                                 errorMessage={errors.name}
                                 returnKeyType="next"
@@ -236,7 +236,7 @@ const RegisterScreen = ({ navigation }) => {
                                 placeholder="Enter your company name"
                                 value={formData.organization}
                                 onChangeText={(text) => updateField('organization', text)}
-                                leftIcon="domain"
+                                leftIcon="business-outline"
                                 returnKeyType="next"
                                 onSubmitEditing={() => emailRef.current?.focus()}
                             />
@@ -250,7 +250,7 @@ const RegisterScreen = ({ navigation }) => {
                                 onChangeText={(text) => updateField('email', text)}
                                 keyboardType="email-address"
                                 autoCapitalize="none"
-                                leftIcon="email-outline"
+                                leftIcon="mail-outline"
                                 error={!!errors.email}
                                 errorMessage={errors.email}
                                 returnKeyType="next"
@@ -265,7 +265,7 @@ const RegisterScreen = ({ navigation }) => {
                                 value={formData.password}
                                 onChangeText={(text) => updateField('password', text)}
                                 secureTextEntry
-                                leftIcon="lock-outline"
+                                leftIcon="lock-closed-outline"
                                 error={!!errors.password}
                                 errorMessage={errors.password}
                                 helperText="At least 6 characters"
@@ -281,7 +281,7 @@ const RegisterScreen = ({ navigation }) => {
                                 value={formData.confirmPassword}
                                 onChangeText={(text) => updateField('confirmPassword', text)}
                                 secureTextEntry
-                                leftIcon="lock-check-outline"
+                                leftIcon="lock-closed-outline"
                                 error={!!errors.confirmPassword}
                                 errorMessage={errors.confirmPassword}
                                 returnKeyType="done"
@@ -299,7 +299,7 @@ const RegisterScreen = ({ navigation }) => {
                                 }}
                             >
                                 <Icon
-                                    name={agreeTerms ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                                    name={agreeTerms ? 'checkbox' : 'square-outline'}
                                     size={ms(22)}
                                     color={errors.terms ? Colors.error : (agreeTerms ? Colors.primary : Colors.textMuted)}
                                 />
@@ -334,7 +334,7 @@ const RegisterScreen = ({ navigation }) => {
                                 onPress={handleRegister}
                                 loading={loading}
                                 style={styles.registerButton}
-                                icon="account-plus"
+                                icon="person-add-outline"
                             />
 
                             {/* Divider */}
@@ -353,7 +353,7 @@ const RegisterScreen = ({ navigation }) => {
                                     onPress={handleGoogleLogin}
                                     disabled={loading}
                                 >
-                                    <Icon name="google" size={ms(24)} color="#DB4437" />
+                                    <Icon name="logo-google" size={ms(24)} color="#DB4437" />
                                 </TouchableOpacity>
                                 {/* <TouchableOpacity style={styles.socialButton}>
                                     <Icon name="apple" size={ms(24)} color={Colors.black} />

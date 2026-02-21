@@ -14,7 +14,7 @@ import {
     ScrollView,
     Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../constants/Spacing';
 import { ms, vs, wp, screenHeight } from '../utils/Responsive';
@@ -168,7 +168,7 @@ const BottomSheetNavigation = ({ onNavigate }) => {
                                 {isActive && (
                                     <View style={styles.activeIndicator}>
                                         <Icon
-                                            name="check-circle"
+                                            name="checkmark-circle"
                                             size={ms(16)}
                                             color={Colors.primary}
                                         />

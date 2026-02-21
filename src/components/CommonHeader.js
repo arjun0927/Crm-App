@@ -1,50 +1,45 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React from 'react'
-import { AppText } from '../components';
 import { Colors } from '../constants/Colors'
 import { ms, vs, wp } from '../utils/Responsive'
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
+import IonIcon from 'react-native-vector-icons/Ionicons'
 import { ROUTES } from '../constants'
-import { Spacing, BorderRadius, Shadow } from '../constants/Spacing'
-import { useAuth } from '../context';
+import { Spacing, Shadow } from '../constants/Spacing'
+import { useAuth, useNotification } from '../context';
 
 const CommonHeader = ({ navigation }) => {
     const { user } = useAuth();
+    const { unreadCount } = useNotification();
+
     return (
         <View style={styles.header}>
             <View>
-                <AppText size="sm" color={Colors.textSecondary}>
-                    Welcome back,
-                </AppText>
-                <AppText size="xl" weight="bold">
-                    {user?.name || 'User'}
-                </AppText>
+                <Text style={styles.welcomeText}>Welcome back,</Text>
+                <Text style={styles.userName}>{user?.name || 'User'}</Text>
             </View>
             <View style={styles.headerActions}>
                 <TouchableOpacity
-                    style={styles.aiButton}
+                    style={[styles.iconBtn, { backgroundColor: Colors.primaryBackground }]}
                     onPress={() => navigation.navigate(ROUTES.AI_ASSISTANT)}
                 >
-                    <Icon name="creation" size={ms(24)} color={Colors.primary} />
+                    <IonIcon name="sparkles" size={ms(20)} color={Colors.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={styles.notificationButton}
+                    style={styles.iconBtn}
                     onPress={() => navigation.navigate(ROUTES.NOTIFICATIONS)}
                 >
-                    <Icon name="bell-outline" size={ms(24)} color={Colors.textPrimary} />
-                    {/* {unreadCount > 0 && (
-                        <View style={styles.notificationBadge}>
-                            <AppText size="xs" weight="bold" color={Colors.white}>
-                                {unreadCount > 9 ? '9+' : unreadCount}
-                            </AppText>
+                    <IonIcon name="notifications-outline" size={ms(22)} color={Colors.textPrimary} />
+                    {unreadCount && unreadCount > 0 ? (
+                        <View style={styles.badge}>
+                            <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
                         </View>
-                    )} */}
+                    ) : null}
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={styles.profileButton}
+                    style={styles.iconBtn}
                     onPress={() => navigation.navigate('Profile')}
                 >
-                    <Icon name="account-circle" size={ms(24)} color={Colors.textPrimary} />
+                    <IonIcon name="person-outline" size={ms(22)} color={Colors.textPrimary} />
                 </TouchableOpacity>
             </View>
         </View>
@@ -58,52 +53,49 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: vs(16),
-        paddingHorizontal: wp(4),
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Spacing.sm,
+        paddingBottom: Spacing.md,
+    },
+    welcomeText: {
+        fontSize: ms(13),
+        color: Colors.textSecondary,
+        fontWeight: '500',
+    },
+    userName: {
+        fontSize: ms(24),
+        fontWeight: '800',
+        color: Colors.textPrimary,
+        letterSpacing: -0.5,
     },
     headerActions: {
         flexDirection: 'row',
-        alignItems: 'center',
         gap: Spacing.sm,
     },
-    notificationButton: {
+    iconBtn: {
         width: ms(44),
         height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
-        position: 'relative',
-    },
-    aiButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
+        borderRadius: ms(22),
+        backgroundColor: Colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
         ...Shadow.sm,
     },
-    notificationBadge: {
+    badge: {
         position: 'absolute',
         top: -2,
         right: -2,
+        backgroundColor: Colors.danger,
+        borderRadius: 10,
         minWidth: ms(18),
         height: ms(18),
-        borderRadius: ms(9),
-        backgroundColor: Colors.error || '#ef4444',
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 4,
     },
-    profileButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
+    badgeText: {
+        color: '#fff',
+        fontSize: ms(10),
+        fontWeight: '700',
     },
 })

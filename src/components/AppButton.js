@@ -10,7 +10,7 @@ import {
     ActivityIndicator,
     View,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../constants/Colors';
 import { BorderRadius, Spacing } from '../constants/Spacing';
 import { ms, hs, vs } from '../utils/Responsive';

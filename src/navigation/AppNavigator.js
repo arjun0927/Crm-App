@@ -14,6 +14,7 @@ import {
     SplashScreen,
     LoginScreen,
     RegisterScreen,
+    OnboardingScreen,
     LeadDetailsScreen,
     TaskDetailsScreen,
     AddLeadScreen,
@@ -84,6 +85,11 @@ const AppNavigator = () => {
                 <Stack.Screen
                     name={ROUTES.SPLASH}
                     component={SplashScreen}
+                    options={{ animation: 'fade' }}
+                />
+                <Stack.Screen
+                    name={ROUTES.ONBOARDING}
+                    component={OnboardingScreen}
                     options={{ animation: 'fade' }}
                 />
                 <Stack.Screen

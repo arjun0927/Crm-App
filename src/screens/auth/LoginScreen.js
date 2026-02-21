@@ -16,7 +16,7 @@ import {
     StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs, wp } from '../../utils/Responsive';
@@ -162,7 +162,7 @@ const LoginScreen = ({ navigation }) => {
                         >
                             <View style={styles.logoContainer}>
                                 <View style={styles.logo}>
-                                    <Icon name="account-group" size={ms(40)} color={Colors.white} />
+                                    <Icon name="people" size={ms(40)} color={Colors.white} />
                                 </View>
                             </View>
                             <AppText size="xxl" weight="bold" style={styles.title}>
@@ -204,7 +204,7 @@ const LoginScreen = ({ navigation }) => {
                                 }}
                                 keyboardType="email-address"
                                 autoCapitalize="none"
-                                leftIcon="email-outline"
+                                leftIcon="mail-outline"
                                 error={!!errors.email}
                                 errorMessage={errors.email}
                                 returnKeyType="next"
@@ -222,7 +222,7 @@ const LoginScreen = ({ navigation }) => {
                                     setErrors({ ...errors, password: null, general: null });
                                 }}
                                 secureTextEntry
-                                leftIcon="lock-outline"
+                                leftIcon="lock-closed-outline"
                                 error={!!errors.password}
                                 errorMessage={errors.password}
                                 returnKeyType="done"
@@ -236,7 +236,7 @@ const LoginScreen = ({ navigation }) => {
                                     onPress={() => setRememberMe(!rememberMe)}
                                 >
                                     <Icon
-                                        name={rememberMe ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                                        name={rememberMe ? 'checkbox' : 'square-outline'}
                                         size={ms(22)}
                                         color={rememberMe ? Colors.primary : Colors.textMuted}
                                     />
@@ -258,7 +258,7 @@ const LoginScreen = ({ navigation }) => {
                                 onPress={handleLogin}
                                 loading={loading}
                                 style={styles.loginButton}
-                                icon="login"
+                                icon="log-in-outline"
                             />
 
                             {/* Divider */}
@@ -277,7 +277,7 @@ const LoginScreen = ({ navigation }) => {
                                     onPress={handleGoogleLogin}
                                     disabled={loading}
                                 >
-                                    <Icon name="google" size={ms(24)} color="#DB4437" />
+                                    <Icon name="logo-google" size={ms(24)} color="#DB4437" />
                                 </TouchableOpacity>
                                 {/* <TouchableOpacity style={styles.socialButton}>
                                     <Icon name="apple" size={ms(24)} color={Colors.black} />

@@ -6,7 +6,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../constants/Colors';
 import { BorderRadius, Shadow, Spacing } from '../constants/Spacing';
 import { ms, vs, wp } from '../utils/Responsive';

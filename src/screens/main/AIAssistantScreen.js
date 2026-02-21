@@ -14,7 +14,7 @@ import {
     Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { AppText } from '../../components';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
@@ -56,10 +56,10 @@ const AIAssistantScreen = ({ navigation }) => {
     const flatListRef = useRef(null);
 
     const suggestions = [
-        { id: 1, icon: 'chart-line', text: 'Show me overall sales performance this month' },
-        { id: 2, icon: 'alert-circle-outline', text: 'Which teams are underperforming?' },
-        { id: 3, icon: 'chart-bar', text: 'Generate a revenue forecast for next quarter' },
-        { id: 4, icon: 'account-group-outline', text: 'Show user activity and adoption metrics' },
+        { id: 1, icon: 'trending-up', color: '#4D8733', text: 'Show me overall sales performance this month' },
+        { id: 2, icon: 'alert-circle', color: '#F59E0B', text: 'Which teams are underperforming?' },
+        { id: 3, icon: 'bar-chart', color: '#3B82F6', text: 'Generate a revenue forecast for next quarter' },
+        { id: 4, icon: 'people', color: '#8B5CF6', text: 'Show user activity and adoption metrics' },
     ];
 
     useEffect(() => {
@@ -206,7 +206,7 @@ const AIAssistantScreen = ({ navigation }) => {
         <View style={styles.header}>
             <View style={styles.headerLeft}>
                 <View style={styles.logoContainer}>
-                    <Icon name="creation" size={ms(24)} color={THEME_COLOR} />
+                    <Icon name="sparkles" size={ms(24)} color={Colors.primary} />
                 </View>
                 <View>
                     <AppText size="lg" weight="bold">AI Assistant</AppText>
@@ -224,13 +224,13 @@ const AIAssistantScreen = ({ navigation }) => {
             </View>
             <View style={styles.headerRight}>
                 <TouchableOpacity style={styles.headerButton} onPress={handleNewChat}>
-                    <Icon name="message-plus-outline" size={ms(22)} color={Colors.textSecondary} />
+                    <Icon name="add-outline" size={ms(22)} color={Colors.textSecondary} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.headerButton} onPress={() => setIsHistoryVisible(true)}>
-                    <Icon name="history" size={ms(22)} color={Colors.textSecondary} />
+                    <Icon name="time-outline" size={ms(22)} color={Colors.textSecondary} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
-                    <Icon name="close" size={ms(24)} color={Colors.textSecondary} />
+                    <Icon name="close" size={ms(22)} color={Colors.textSecondary} />
                 </TouchableOpacity>
             </View>
         </View>
@@ -247,7 +247,7 @@ const AIAssistantScreen = ({ navigation }) => {
             <View style={styles.creditBar}>
                 <View style={styles.creditInfo}>
                     <View style={styles.creditLabelRow}>
-                        <Icon name="flash" size={ms(16)} color={THEME_COLOR} />
+                        <Icon name="flash" size={ms(16)} color={Colors.primary} />
                         <AppText weight="bold" size="sm">{planName || 'Basic'}</AppText>
                     </View>
                     <AppText size="xs" color={Colors.textMuted}>
@@ -281,7 +281,7 @@ const AIAssistantScreen = ({ navigation }) => {
             ]}>
                 {!isUser && (
                     <View style={styles.aiAvatarSmall}>
-                        <Icon name="sparkles" size={ms(14)} color={THEME_COLOR} />
+                        <Icon name="sparkles" size={ms(14)} color={Colors.primary} />
                     </View>
                 )}
                 <View style={[
@@ -315,7 +315,7 @@ const AIAssistantScreen = ({ navigation }) => {
         <ScrollView contentContainerStyle={styles.contentContainer}>
             <View style={styles.welcomeContainer}>
                 <View style={styles.welcomeIconContainer}>
-                    <Icon name="creation" size={ms(40)} color={THEME_COLOR} />
+                    <Icon name="sparkles" size={ms(40)} color={Colors.primary} />
                 </View>
                 <AppText size="xl" weight="bold" style={styles.welcomeTitle}>
                     How can I help you today?
@@ -329,8 +329,8 @@ const AIAssistantScreen = ({ navigation }) => {
                         style={styles.suggestionButton}
                         onPress={() => handleSend(item.text)}
                     >
-                        <View style={styles.suggestionIcon}>
-                            <Icon name={item.icon} size={ms(20)} color={THEME_COLOR} />
+                        <View style={[styles.suggestionIcon, item.color && { backgroundColor: item.color + '15' }]}>
+                            <Icon name={item.icon} size={ms(20)} color={item.color || Colors.primary} />
                         </View>
                         <AppText style={styles.suggestionText}>{item.text}</AppText>
                     </TouchableOpacity>
@@ -382,7 +382,7 @@ const AIAssistantScreen = ({ navigation }) => {
                             onPress={() => handleSend()}
                             disabled={isLoading || inputText.trim().length === 0}
                         >
-                            <Icon name={isLoading ? "loading" : "send"} size={ms(20)} color={Colors.white} />
+                            <Icon name="send" size={ms(18)} color={Colors.white} />
                         </TouchableOpacity>
                     </View>
                     <AppText size="xs" color={Colors.textMuted} style={styles.disclaimer}>
@@ -407,7 +407,7 @@ const AIAssistantScreen = ({ navigation }) => {
                     </View>
                     {sessions.length === 0 ? (
                         <View style={styles.emptyHistory}>
-                            <Icon name="history" size={ms(48)} color={Colors.textMuted} />
+                            <Icon name="time-outline" size={ms(48)} color={Colors.textMuted} />
                             <AppText color={Colors.textMuted} style={{ marginTop: 10 }}>No chat history yet</AppText>
                         </View>
                     ) : (
@@ -434,7 +434,7 @@ const AIAssistantScreen = ({ navigation }) => {
                                         style={styles.deleteHistoryButton}
                                         onPress={() => handleDeleteSession(item._id)}
                                     >
-                                        <Icon name="trash-can-outline" size={ms(20)} color={Colors.textMuted} />
+                                        <Icon name="trash-outline" size={ms(20)} color={Colors.textMuted} />
                                     </TouchableOpacity>
                                 </TouchableOpacity>
                             )}
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
         width: ms(36),
         height: ms(36),
         borderRadius: BorderRadius.sm,
-        backgroundColor: THEME_COLOR + '20', // 20% opacity
+        backgroundColor: Colors.primary + '20', // 20% opacity
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: Spacing.sm,
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: THEME_COLOR,
+        backgroundColor: Colors.primary,
         marginRight: 4,
     },
     headerRight: {
@@ -559,14 +559,13 @@ const styles = StyleSheet.create({
         marginBottom: vs(32),
     },
     welcomeIconContainer: {
-        width: ms(80),
-        height: ms(80),
+        width: ms(65),
+        height: ms(65),
         borderRadius: BorderRadius.xl,
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        backgroundColor: Colors.primary + '20',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: Spacing.lg,
-        ...Shadow.sm,
     },
     welcomeTitle: {
         textAlign: 'center',
@@ -631,7 +630,7 @@ const styles = StyleSheet.create({
         width: ms(36),
         height: ms(36),
         borderRadius: BorderRadius.sm,
-        backgroundColor: Colors.textMuted,
+        backgroundColor: Colors.primary + '80',
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: Spacing.sm,

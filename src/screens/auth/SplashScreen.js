@@ -9,6 +9,7 @@ import { Colors } from '../../constants/Colors';
 import { ms, vs } from '../../utils/Responsive';
 import { useAuth } from '../../context';
 import AppText from '../../components/AppText';
+import { isOnboardingCompleted } from '../../storage';
 
 const SplashScreen = ({ navigation }) => {
     const { isLoading, isAuthenticated } = useAuth();
@@ -35,9 +36,15 @@ const SplashScreen = ({ navigation }) => {
     // Navigate when auth state is loaded
     useEffect(() => {
         if (!isLoading) {
-            // Add a minimum splash duration
-            const timer = setTimeout(() => {
-                if (isAuthenticated) {
+            const timer = setTimeout(async () => {
+                const onboarded = await isOnboardingCompleted();
+                if (!onboarded) {
+                    // First launch — show onboarding
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'Onboarding' }],
+                    });
+                } else if (isAuthenticated) {
                     navigation.reset({
                         index: 0,
                         routes: [{ name: 'MainTabs' }],

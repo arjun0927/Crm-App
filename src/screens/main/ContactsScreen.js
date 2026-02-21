@@ -1,23 +1,23 @@
 /**
  * Contacts Screen
- * Screen for managing contacts with API integration
+ * Screen for managing contacts — UI matched to Expo ContactsScreen
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
+    Text,
     StyleSheet,
     FlatList,
     TouchableOpacity,
     ActivityIndicator,
     RefreshControl,
-    LayoutAnimation,
-    Platform,
-    UIManager,
     TextInput,
+    Linking,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import IonIcon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs, wp } from '../../utils/Responsive';
@@ -26,167 +26,114 @@ import { useAuth } from '../../context';
 import { contactsAPI } from '../../api';
 import { showError } from '../../utils';
 
-// Enable LayoutAnimation for Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
 const LIMIT = 50;
 
-// Contact Card Component with expandable section
-const ContactCard = ({ contact, onPress, onEdit, onDelete }) => {
-    const [expanded, setExpanded] = useState(false);
+const STATUS_COLORS = {
+    Active: { color: '#10B981', bg: '#ECFDF5' },
+    Inactive: { color: '#9CA3AF', bg: '#F3F4F6' },
+    Prospect: { color: '#3B82F6', bg: '#EFF6FF' },
+};
 
-    const toggleExpand = () => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setExpanded(!expanded);
-    };
+const AVATAR_PALETTE = ['#4D8733', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#6366F1'];
 
-    // Helper to get value or N/A
-    const getValue = (value) => {
-        if (value === undefined || value === null || value === '') {
-            return 'N/A';
-        }
-        return value;
-    };
+function getInitials(first, last) {
+    const f = first?.[0] || '';
+    const l = last?.[0] || '';
+    return (f + l).toUpperCase() || '?';
+}
 
-    // Helper to format location
-    const formatLocation = () => {
-        const parts = [contact.city, contact.state, contact.country].filter(Boolean);
-        return parts.length > 0 ? parts.join(', ') : 'N/A';
-    };
+function getAvatarColor(name) {
+    let hash = 0;
+    for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
 
-    // Format date helper
-    const formatDateValue = (dateString) => {
-        if (!dateString) return 'N/A';
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-            });
-        } catch {
-            return 'N/A';
-        }
-    };
-
-    // Key-Value Row Component
-    const KeyValueRow = ({ label, value, valueColor, isLast }) => (
-        <View style={[styles.keyValueRow, isLast && styles.keyValueRowLast]}>
-            <AppText size="sm" color={Colors.textMuted} style={styles.keyText}>
-                {label}
-            </AppText>
-            <AppText
-                size="sm"
-                weight="medium"
-                color={valueColor || Colors.textPrimary}
-                style={styles.valueText}
-                numberOfLines={1}
-            >
-                {value}
-            </AppText>
-        </View>
-    );
-
-    // Get display name for contact
-    const getDisplayName = () => {
-        const firstName = contact.firstName || contact.first_name || '';
-        const lastName = contact.lastName || contact.last_name || '';
-        const fullName = `${firstName} ${lastName}`.trim();
-        return fullName || contact.name || contact.email || 'Unknown Contact';
-    };
+// Contact Card — matching Expo ContactsScreen
+const ContactCard = ({ contact, onEdit, onDelete, navigation }) => {
+    const firstName = contact.firstName || contact.first_name || '';
+    const lastName = contact.lastName || contact.last_name || '';
+    const fullName = `${firstName} ${lastName}`.trim() || contact.name || 'Unknown';
+    const avatarColor = getAvatarColor(fullName);
+    const statusCfg = STATUS_COLORS[contact.status] || STATUS_COLORS.Active;
+    const location = [contact.city, contact.state, contact.country].filter(Boolean).join(', ');
 
     return (
         <View style={styles.contactCard}>
-            {/* Card Header */}
-            <View style={styles.cardHeader}>
-                <TouchableOpacity
-                    style={styles.cardHeaderContent}
-                    onPress={onPress}
-                    activeOpacity={0.7}
-                >
-                    <View style={styles.iconContainer}>
-                        <Icon name="account" size={ms(20)} color={Colors.primary} />
-                    </View>
-                    <View style={styles.contactTitleContainer}>
-                        <AppText size="base" weight="bold" numberOfLines={1}>
-                            {getDisplayName()}
-                        </AppText>
-                    </View>
-                </TouchableOpacity>
-
-                {/* Edit & Delete Icons */}
-                <View style={styles.headerActions}>
-                    <TouchableOpacity
-                        style={styles.actionIconButton}
-                        onPress={() => onEdit?.(contact)}
-                        activeOpacity={0.7}
-                    >
-                        <Icon name="pencil" size={ms(18)} color={Colors.info} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.actionIconButton}
-                        onPress={() => onDelete?.(contact)}
-                        activeOpacity={0.7}
-                    >
-                        <Icon name="delete" size={ms(18)} color={Colors.error} />
-                    </TouchableOpacity>
+            {/* Top section */}
+            <View style={styles.cardTop}>
+                <View style={[styles.avatar, { backgroundColor: avatarColor + '18' }]}>
+                    <Text style={[styles.avatarText, { color: avatarColor }]}>
+                        {getInitials(firstName, lastName)}
+                    </Text>
+                </View>
+                <View style={styles.cardTopInfo}>
+                    <Text style={styles.contactName}>{fullName}</Text>
+                    {(contact.designation || contact.company || contact.companyName) ? (
+                        <Text style={styles.contactRole} numberOfLines={1}>
+                            {[contact.designation || contact.title, contact.company || contact.companyName].filter(Boolean).join(' at ')}
+                        </Text>
+                    ) : null}
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
+                    <Text style={[styles.statusText, { color: statusCfg.color }]}>{contact.status || 'Active'}</Text>
                 </View>
             </View>
 
-            {/* Card Body - Main Fields in Key-Value Layout */}
-            <TouchableOpacity
-                style={styles.cardBody}
-                onPress={onPress}
-                activeOpacity={0.8}
-            >
-                <KeyValueRow label="Email" value={getValue(contact.email)} valueColor={contact.email ? Colors.info : Colors.textSecondary} />
-                <KeyValueRow label="Phone" value={getValue(contact.phone || contact.mobile)} />
-                <KeyValueRow label="Company" value={getValue(contact.company || contact.companyName)} />
-                <KeyValueRow label="Designation" value={getValue(contact.designation || contact.title)} isLast />
-            </TouchableOpacity>
+            {/* Quick info chips */}
+            <View style={styles.infoChipsRow}>
+                {contact.email ? (
+                    <TouchableOpacity
+                        style={styles.infoChip}
+                        onPress={() => Linking.openURL(`mailto:${contact.email}`)}
+                    >
+                        <IonIcon name="mail-outline" size={13} color={Colors.info} />
+                        <Text style={styles.infoChipText} numberOfLines={1}>{contact.email}</Text>
+                    </TouchableOpacity>
+                ) : null}
+                {(contact.phone || contact.mobile) ? (
+                    <TouchableOpacity
+                        style={styles.infoChip}
+                        onPress={() => Linking.openURL(`tel:${contact.phone || contact.mobile}`)}
+                    >
+                        <IonIcon name="call-outline" size={13} color={Colors.primary} />
+                        <Text style={styles.infoChipText}>{contact.phone || contact.mobile}</Text>
+                    </TouchableOpacity>
+                ) : null}
+                {location ? (
+                    <View style={styles.infoChip}>
+                        <IonIcon name="location-outline" size={13} color={Colors.textTertiary} />
+                        <Text style={styles.infoChipText} numberOfLines={1}>{location}</Text>
+                    </View>
+                ) : null}
+            </View>
 
-            {/* Expandable Content */}
-            {expanded && (
-                <View style={styles.expandedContent}>
-                    <KeyValueRow label="Location" value={formatLocation()} />
-                    <KeyValueRow label="Address" value={getValue(contact.address)} />
-                    <KeyValueRow
-                        label="Website"
-                        value={getValue(contact.website)}
-                        valueColor={contact.website ? Colors.info : Colors.textSecondary}
-                    />
-                    <KeyValueRow label="Source" value={getValue(contact.source)} />
-                    <KeyValueRow label="Status" value={getValue(contact.status)} />
-                    <KeyValueRow label="Created At" value={formatDateValue(contact.createdAt)} />
-                    <KeyValueRow label="Updated At" value={formatDateValue(contact.updatedAt)} isLast />
-                </View>
-            )}
-
-            {/* Expandable Section Toggle */}
-            <TouchableOpacity
-                style={styles.expandToggle}
-                onPress={toggleExpand}
-                activeOpacity={0.7}
-            >
-                <AppText size="sm" weight="medium" color={Colors.primary}>
-                    {expanded ? 'View Less' : 'View More'}
-                </AppText>
-                <Icon
-                    name={expanded ? 'chevron-up' : 'chevron-down'}
-                    size={ms(18)}
-                    color={Colors.primary}
-                />
-            </TouchableOpacity>
+            {/* Actions */}
+            <View style={styles.cardActions}>
+                <TouchableOpacity style={styles.cardActionBtn} onPress={() => onEdit?.(contact)}>
+                    <IonIcon name="create-outline" size={16} color={Colors.info} />
+                    <Text style={[styles.cardActionText, { color: Colors.info }]}>Edit</Text>
+                </TouchableOpacity>
+                {(contact.phone || contact.mobile) ? (
+                    <TouchableOpacity
+                        style={styles.cardActionBtn}
+                        onPress={() => Linking.openURL(`tel:${contact.phone || contact.mobile}`)}
+                    >
+                        <IonIcon name="call-outline" size={16} color={Colors.primary} />
+                        <Text style={[styles.cardActionText, { color: Colors.primary }]}>Call</Text>
+                    </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity style={styles.cardActionBtn} onPress={() => onDelete?.(contact)}>
+                    <IonIcon name="trash-outline" size={16} color={Colors.danger} />
+                    <Text style={[styles.cardActionText, { color: Colors.danger }]}>Delete</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
 
 const ContactsScreen = ({ navigation }) => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState(null);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -200,39 +147,19 @@ const ContactsScreen = ({ navigation }) => {
 
     // Debounced search effect
     useEffect(() => {
-        // Skip on initial mount - let the other useEffect handle it
-        if (isInitialLoadRef.current) {
-            return;
-        }
-
-        // Clear any existing timeout
-        if (searchTimeoutRef.current) {
-            clearTimeout(searchTimeoutRef.current);
-        }
-
-        // Store current search query
+        if (isInitialLoadRef.current) return;
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         currentSearchRef.current = searchQuery;
-
-        // If search query is empty, fetch all contacts immediately
         if (!searchQuery.trim()) {
             fetchContacts(1, false, '');
             return;
         }
-
-        // Debounce the search API call (300ms)
         searchTimeoutRef.current = setTimeout(() => {
             fetchContacts(1, false, searchQuery.trim());
         }, 300);
-
-        // Cleanup timeout on unmount or query change
-        return () => {
-            if (searchTimeoutRef.current) {
-                clearTimeout(searchTimeoutRef.current);
-            }
-        };
+        return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
     }, [searchQuery]);
 
-    // Fetch contacts on mount (initial load only)
     useEffect(() => {
         fetchContacts(1, true, '');
         isInitialLoadRef.current = false;
@@ -240,48 +167,26 @@ const ContactsScreen = ({ navigation }) => {
 
     const fetchContacts = async (pageNum = 1, showLoader = false, search = '') => {
         try {
-            // Only show loading spinner on initial load, not during search
-            if (showLoader) {
-                setLoading(true);
-            } else if (pageNum > 1) {
-                setLoadingMore(true);
-            }
+            if (showLoader) setLoading(true);
+            else if (pageNum > 1) setLoadingMore(true);
 
-            // Build params with search
             const params = { page: pageNum, limit: LIMIT };
-            if (search) {
-                params.search = search;
-            }
+            if (search) params.search = search;
 
             const response = await contactsAPI.getAll(params);
-
-            console.log('Contacts API Response:', response, 'Search:', search);
-
-            // Check if this response is still relevant (search query hasn't changed)
-            if (search !== currentSearchRef.current && search !== '') {
-                console.log('Search query changed, discarding stale response');
-                return;
-            }
+            if (search !== currentSearchRef.current && search !== '') return;
 
             if (response.success) {
                 const contactsData = response.data?.data || response.data?.contacts || response.data || [];
                 const newContacts = Array.isArray(contactsData) ? contactsData : [];
-
-                if (pageNum === 1) {
-                    setContacts(newContacts);
-                } else {
-                    setContacts(prev => [...prev, ...newContacts]);
-                }
-
-                // Check if there are more pages
+                if (pageNum === 1) setContacts(newContacts);
+                else setContacts(prev => [...prev, ...newContacts]);
                 setHasMore(newContacts.length === LIMIT);
                 setPage(pageNum);
             } else {
-                console.error('Failed to fetch contacts:', response.error);
                 showError('Error', response.error || 'Failed to load contacts');
             }
         } catch (error) {
-            console.error('Error fetching contacts:', error);
             showError('Error', 'Failed to load contacts');
         } finally {
             setLoading(false);
@@ -302,399 +207,287 @@ const ContactsScreen = ({ navigation }) => {
         }
     }, [loadingMore, hasMore, loading, page, searchQuery]);
 
-    const renderHeader = () => (
-        <View style={styles.header}>
-            <View style={styles.headerLeft}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
-                </TouchableOpacity>
-                <View>
-                    <AppText size="sm" color={Colors.textSecondary}>
-                        Manage
-                    </AppText>
-                    <AppText size="xl" weight="bold">
-                        Contacts
-                    </AppText>
-                </View>
-            </View>
-            <View style={styles.headerActions}>
-                <TouchableOpacity
-                    style={styles.profileButton}
-                    onPress={() => navigation.navigate('Profile')}
-                >
-                    <Icon name="account-circle" size={ms(24)} color={Colors.textPrimary} />
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-
-    // Search Bar Component
-    const renderSearchBar = () => (
-        <View style={styles.searchContainer}>
-            <Icon name="magnify" size={ms(20)} color={Colors.textMuted} style={styles.searchIcon} />
-            <TextInput
-                style={styles.searchInput}
-                placeholder="Search contacts..."
-                placeholderTextColor={Colors.textMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Icon name="close-circle" size={ms(18)} color={Colors.textMuted} />
-                </TouchableOpacity>
-            )}
-        </View>
-    );
-
-    const renderSectionHeader = () => (
-        <View style={styles.sectionHeader}>
-            <View>
-                <AppText size="lg" weight="semiBold">
-                    Contacts
-                </AppText>
-                <AppText size="xs" color={Colors.textMuted}>
-                    {contacts.length} {searchQuery ? 'found' : 'contacts'}
-                </AppText>
-            </View>
-            <AppButton
-                title="Add Contact"
-                onPress={() => console.log('Add Contact')}
-                fullWidth={false}
-                size="small"
-                icon="plus"
-                style={styles.addButton}
-            />
-        </View>
-    );
-
     const handleEditContact = (contact) => {
-        console.log('Edit contact:', contact._id);
         navigation.navigate('EditContact', { contact });
     };
 
     const handleDeleteContact = (contact) => {
-        console.log('Delete contact:', contact._id);
-        // TODO: Implement delete confirmation
+        const name = `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'this contact';
+        Alert.alert('Delete Contact', `Remove "${name}"?`, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: () => console.log('Delete:', contact._id) },
+        ]);
     };
 
-    const renderContactCard = ({ item: contact }) => (
-        <ContactCard
-            contact={contact}
-            onPress={() => console.log('Contact details:', contact._id)}
-            onEdit={handleEditContact}
-            onDelete={handleDeleteContact}
-        />
-    );
+    // Filtered contacts
+    const filteredContacts = statusFilter
+        ? contacts.filter(c => c.status === statusFilter)
+        : contacts;
 
     const renderFooter = () => {
         if (!loadingMore) return null;
-
         return (
             <View style={styles.footerLoader}>
                 <ActivityIndicator size="small" color={Colors.primary} />
-                <AppText size="sm" color={Colors.textMuted} style={styles.footerText}>
-                    Loading more contacts...
-                </AppText>
             </View>
         );
     };
 
     const renderEmpty = () => {
         if (loading) return null;
-
         return (
             <View style={styles.emptyState}>
-                <Icon name="account-multiple" size={ms(60)} color={Colors.textMuted} />
-                <AppText size="lg" weight="semiBold" color={Colors.textSecondary} style={styles.emptyTitle}>
-                    No Contacts Found
-                </AppText>
-                <AppText size="sm" color={Colors.textMuted} style={styles.emptySubtitle}>
-                    {searchQuery ? 'Try adjusting your search' : 'Start by adding your first contact'}
-                </AppText>
-                <AppButton
-                    title="Add Contact"
-                    onPress={() => console.log('Add Contact')}
-                    icon="plus"
-                    style={styles.emptyButton}
-                />
+                <View style={styles.emptyCircle}>
+                    <IonIcon name="people" size={ms(40)} color={Colors.primary} />
+                </View>
+                <Text style={styles.emptyTitle}>No contacts yet</Text>
+                <Text style={styles.emptySubtitle}>Tap + to add your first contact</Text>
             </View>
         );
     };
 
-    const renderListHeader = () => (
-        <View style={styles.listHeader}>
-            {renderHeader()}
-            {renderSearchBar()}
-            {renderSectionHeader()}
-        </View>
-    );
-
-    if (loading) {
-        return (
-            <SafeAreaView style={styles.container} edges={['top']}>
-                <View style={styles.loadingHeaderContainer}>
-                    {renderHeader()}
-                </View>
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={Colors.primary} />
-                    <AppText size="base" color={Colors.textMuted} style={styles.loadingText}>
-                        Loading contacts...
-                    </AppText>
-                </View>
-            </SafeAreaView>
-        );
-    }
-
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.headerContainer}>
-                {renderListHeader()}
-            </View>
-            <FlatList
-                data={contacts}
-                keyExtractor={(item) => item._id || item.id || String(Math.random())}
-                renderItem={renderContactCard}
-                ListFooterComponent={renderFooter}
-                ListEmptyComponent={renderEmpty}
-                onEndReached={loadMore}
-                onEndReachedThreshold={0.5}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        colors={[Colors.primary]}
-                        tintColor={Colors.primary}
+        <View style={styles.container}>
+            <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+                {/* Header — matching Expo */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <IonIcon name="arrow-back" size={22} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                    <View style={styles.headerCenter}>
+                        <Text style={styles.headerTitle}>Contacts</Text>
+                        <Text style={styles.headerCount}>{contacts.length} contacts</Text>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.addBtnSmall}
+                        onPress={() => navigation.navigate('AddContact')}
+                    >
+                        <IonIcon name="add" size={22} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Search */}
+                <View style={styles.searchFilterRow}>
+                    <View style={styles.searchBarInline}>
+                        <IonIcon name="search" size={16} color={Colors.textTertiary} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search contacts..."
+                            placeholderTextColor={Colors.textTertiary}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                        {searchQuery ? (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <IonIcon name="close-circle" size={16} color={Colors.textTertiary} />
+                            </TouchableOpacity>
+                        ) : null}
+                    </View>
+                </View>
+
+                {/* Status filter chips */}
+                <View style={styles.filterRow}>
+                    <TouchableOpacity
+                        style={[styles.filterChip, !statusFilter && styles.filterChipActive]}
+                        onPress={() => setStatusFilter(null)}
+                    >
+                        <Text style={[styles.filterChipText, !statusFilter && styles.filterChipTextActive]}>All</Text>
+                    </TouchableOpacity>
+                    {Object.entries(STATUS_COLORS).map(([status, cfg]) => (
+                        <TouchableOpacity
+                            key={status}
+                            style={[
+                                styles.filterChip,
+                                statusFilter === status && { backgroundColor: cfg.color, borderColor: cfg.color },
+                            ]}
+                            onPress={() => setStatusFilter(statusFilter === status ? null : status)}
+                        >
+                            <View style={[styles.filterDot, { backgroundColor: statusFilter === status ? '#fff' : cfg.color }]} />
+                            <Text style={[styles.filterChipText, statusFilter === status && { color: '#fff' }]}>{status}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                {/* List */}
+                {loading ? (
+                    <View style={styles.centered}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                    </View>
+                ) : (
+                    <FlatList
+                        data={filteredContacts}
+                        keyExtractor={(item) => item._id || item.id || String(Math.random())}
+                        contentContainerStyle={styles.listContent}
+                        showsVerticalScrollIndicator={false}
+                        renderItem={({ item }) => (
+                            <ContactCard
+                                contact={item}
+                                navigation={navigation}
+                                onEdit={handleEditContact}
+                                onDelete={handleDeleteContact}
+                            />
+                        )}
+                        ListEmptyComponent={renderEmpty}
+                        ListFooterComponent={renderFooter}
+                        onEndReached={loadMore}
+                        onEndReachedThreshold={0.5}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={[Colors.primary]}
+                            />
+                        }
                     />
-                }
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-            />
-        </SafeAreaView>
+                )}
+            </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.background,
-    },
-    headerContainer: {
-        paddingHorizontal: wp(4),
-    },
-    listContent: {
-        paddingHorizontal: wp(4),
-        paddingTop: vs(5),
-        paddingBottom: vs(20),
-    },
-    listHeader: {
-        marginBottom: vs(16),
-    },
-    loadingHeaderContainer: {
-        paddingHorizontal: wp(4),
-    },
+    container: { flex: 1, backgroundColor: Colors.background },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+    // Header — matching Expo
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: vs(16),
-    },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
-    },
-    backButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
-    },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
-    },
-    notificationButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
-    },
-    profileButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
-    },
-    notificationBadge: {
-        position: 'absolute',
-        top: ms(8),
-        right: ms(8),
-        width: ms(16),
-        height: ms(16),
-        borderRadius: ms(8),
-        backgroundColor: Colors.error,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    addButton: {
-        paddingHorizontal: Spacing.md,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: Spacing.md,
-    },
-
-    // Contact Card Styles
-    contactCard: {
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.lg,
-        marginBottom: vs(12),
-        ...Shadow.md,
-        overflow: 'hidden',
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: Spacing.md,
-        backgroundColor: Colors.background,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-    },
-    cardHeaderContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    iconContainer: {
-        marginRight: ms(10),
-    },
-    contactTitleContainer: {
-        flex: 1,
-    },
-    actionIconButton: {
-        width: ms(36),
-        height: ms(36),
-        borderRadius: BorderRadius.md,
-        backgroundColor: Colors.background,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: Colors.border,
-    },
-    cardBody: {
-        padding: Spacing.md,
-    },
-
-    // Key-Value Row Styles
-    keyValueRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: vs(8),
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-    },
-    keyValueRowLast: {
-        borderBottomWidth: 0,
-    },
-    keyText: {
-        flex: 0.4,
-    },
-    valueText: {
-        flex: 0.6,
-        textAlign: 'right',
-    },
-
-    // Expand Toggle Styles
-    expandToggle: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: Spacing.sm,
-        borderTopWidth: 1,
-        borderTopColor: Colors.border,
-        backgroundColor: Colors.background,
-        gap: Spacing.xs,
-    },
-
-    // Expanded Content Styles
-    expandedContent: {
-        paddingHorizontal: Spacing.md,
+        paddingHorizontal: Spacing.lg,
         paddingTop: Spacing.sm,
-        backgroundColor: Colors.white,
-        borderTopWidth: 1,
-        borderTopColor: Colors.border,
+        paddingBottom: Spacing.md,
     },
-
-    // Footer & Empty Styles
-    footerLoader: {
-        flexDirection: 'row',
+    backBtn: {
+        width: ms(40),
+        height: ms(40),
+        borderRadius: ms(20),
+        backgroundColor: Colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: vs(20),
-    },
-    footerText: {
-        marginLeft: Spacing.sm,
-    },
-    emptyState: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: vs(60),
-    },
-    emptyTitle: {
-        marginTop: vs(16),
-    },
-    emptySubtitle: {
-        marginTop: vs(8),
-        textAlign: 'center',
-    },
-    emptyButton: {
-        marginTop: vs(24),
-    },
-
-    // Search Bar Styles
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.lg,
-        paddingHorizontal: Spacing.md,
-        height: vs(48),
-        marginBottom: vs(16),
         ...Shadow.sm,
     },
-    searchIcon: {
-        marginRight: Spacing.sm,
+    headerCenter: { flex: 1, marginLeft: Spacing.md },
+    headerTitle: { fontSize: ms(22), fontWeight: '800', color: Colors.textPrimary },
+    headerCount: { fontSize: ms(11), color: Colors.textTertiary, marginTop: 1 },
+    addBtnSmall: {
+        width: ms(42),
+        height: ms(42),
+        borderRadius: ms(14),
+        backgroundColor: Colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    // Search
+    searchFilterRow: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm },
+    searchBarInline: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.md,
+        paddingHorizontal: Spacing.md,
+        height: ms(42),
+        borderWidth: 1,
+        borderColor: Colors.surfaceBorder,
     },
     searchInput: {
         flex: 1,
+        marginLeft: Spacing.sm,
         fontSize: ms(14),
         color: Colors.textPrimary,
-        height: '100%',
     },
+
+    // Filters
+    filterRow: {
+        flexDirection: 'row',
+        paddingHorizontal: Spacing.lg,
+        gap: Spacing.sm,
+        marginBottom: Spacing.md,
+    },
+    filterChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: ms(12),
+        paddingVertical: ms(7),
+        borderRadius: BorderRadius.round,
+        backgroundColor: Colors.surface,
+        borderWidth: 1.5,
+        borderColor: Colors.surfaceBorder,
+    },
+    filterChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+    filterChipText: { fontSize: ms(11), fontWeight: '600', color: Colors.textSecondary },
+    filterChipTextActive: { color: '#fff' },
+    filterDot: { width: 6, height: 6, borderRadius: 3 },
+
+    // List
+    listContent: { paddingHorizontal: Spacing.lg, paddingBottom: ms(100) },
+
+    // Contact card — matching Expo
+    contactCard: {
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.xl,
+        padding: ms(16),
+        marginBottom: Spacing.md,
+        ...Shadow.sm,
+    },
+    cardTop: { flexDirection: 'row', alignItems: 'center' },
+    avatar: {
+        width: ms(44),
+        height: ms(44),
+        borderRadius: ms(14),
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarText: { fontSize: ms(16), fontWeight: '700' },
+    cardTopInfo: { flex: 1, marginLeft: Spacing.md },
+    contactName: { fontSize: ms(16), fontWeight: '700', color: Colors.textPrimary },
+    contactRole: { fontSize: ms(12), color: Colors.textSecondary, marginTop: 1 },
+    statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    statusText: { fontSize: ms(10), fontWeight: '700' },
+
+    // Info chips
+    infoChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: Spacing.md },
+    infoChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: Colors.background,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+        maxWidth: '100%',
+    },
+    infoChipText: { fontSize: ms(11), color: Colors.textSecondary, flexShrink: 1 },
+
+    // Actions
+    cardActions: {
+        flexDirection: 'row',
+        gap: Spacing.md,
+        marginTop: Spacing.md,
+        paddingTop: Spacing.sm,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: Colors.divider,
+    },
+    cardActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    cardActionText: { fontSize: ms(12), fontWeight: '600' },
+
+    // Empty
+    emptyState: { alignItems: 'center', paddingTop: ms(80) },
+    emptyCircle: {
+        width: ms(80),
+        height: ms(80),
+        borderRadius: 40,
+        backgroundColor: Colors.primaryBackground,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: Spacing.lg,
+    },
+    emptyTitle: { fontSize: ms(18), fontWeight: '700', color: Colors.textPrimary },
+    emptySubtitle: { fontSize: ms(13), color: Colors.textTertiary, marginTop: 4 },
+
+    // Footer
+    footerLoader: { paddingVertical: Spacing.md, alignItems: 'center' },
 });
 
 export default ContactsScreen;

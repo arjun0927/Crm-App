@@ -1,11 +1,12 @@
 /**
  * Pipeline Screen
- * Display leads grouped by pipeline stages with tab-based navigation
+ * Display leads grouped by pipeline stages with funnel visualization — UI matched to Expo
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     View,
+    Text,
     StyleSheet,
     FlatList,
     TouchableOpacity,
@@ -17,7 +18,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import IonIcon from 'react-native-vector-icons/Ionicons';
+import LinearGradient from 'react-native-linear-gradient';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs, wp } from '../../utils/Responsive';
@@ -25,113 +27,42 @@ import { AppText, AppButton } from '../../components';
 import { leadsAPI } from '../../api';
 import { showError } from '../../utils';
 import { useAuth } from '../../context';
+import CommonHeader from '../../components/CommonHeader';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const LIMIT = 1000;
 
-// Pipeline stages configuration
+// Pipeline stages configuration with Expo-matched icons/colors where possible
 const PIPELINE_STAGES = [
-    { id: 'all', name: 'All', color: Colors.primary },
-    { id: 'New', name: 'New', probability: 20, color: '#ef4444' },
-    { id: 'Contacted', name: 'Contacted', probability: 30, color: '#cca58a' },
-    { id: 'Proposal Sent', name: 'Proposal', probability: 50, color: '#f59e0b' },
-    { id: 'Negotiation', name: 'Negotiation', probability: 80, color: '#3b82f6' },
-    { id: 'Final Review', name: 'Final Review', probability: 85, color: '#8b5cf6' },
-    { id: 'Closed Won', name: 'Won', probability: 100, color: '#10b981' },
+    { id: 'New', name: 'New', color: '#3B82F6', bg: '#EFF6FF', icon: 'sparkles' },
+    { id: 'Contacted', name: 'Contacted', color: '#F59E0B', bg: '#FFFBEB', icon: 'chatbubble' },
+    { id: 'Proposal Sent', name: 'Proposal', color: '#8B5CF6', bg: '#F3F0FF', icon: 'document-text' },
+    { id: 'Negotiation', name: 'Negotiation', color: '#4D8733', bg: '#EEF5E6', icon: 'pie-chart' },
+    { id: 'Final Review', name: 'Review', color: '#EC4899', bg: '#FDF2F8', icon: 'eye' },
+    { id: 'Closed Won', name: 'Won', color: '#10B981', bg: '#ECFDF5', icon: 'trophy' },
+    { id: 'Closed Lost', name: 'Lost', color: '#EF4444', bg: '#FEF2F2', icon: 'close-circle' },
 ];
 
-// Deal Card Component for Pipeline View (matching website UI)
-const DealCard = ({ deal, onPress }) => {
-    const getCompanyName = () => {
-        if (!deal.company) return 'N/A';
-        return deal.company.name || 'N/A';
-    };
+function formatValue(val) {
+    if (!val) return '0';
+    if (val >= 100000) return `${(val / 100000).toFixed(val % 100000 === 0 ? 0 : 1)}L`;
+    if (val >= 1000) return `${(val / 1000).toFixed(val % 1000 === 0 ? 0 : 1)}K`;
+    return val.toLocaleString('en-IN');
+}
 
-    const getSalespersonName = () => {
-        if (!deal.salesperson) return 'N/A';
-        return deal.salesperson.name || 'N/A';
-    };
+function getInitials(name) {
+    if (!name) return '??';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+}
 
-    const formatValue = () => {
-        if (!deal.value) return '₹0';
-        return `₹${deal.value.toLocaleString('en-IN')}`;
-    };
-
-    const getStageColor = () => deal.stage?.color || Colors.textMuted;
-
-    return (
-        <TouchableOpacity
-            style={styles.dealCard}
-            onPress={onPress}
-            activeOpacity={0.7}
-        >
-            {/* Stage Color Indicator */}
-            <View style={[styles.stageIndicator, { backgroundColor: getStageColor() }]} />
-
-            <View style={styles.dealContent}>
-                {/* Title */}
-                <AppText size="sm" weight="semiBold" numberOfLines={2} style={styles.dealTitle}>
-                    {deal.title || 'Untitled Deal'}
-                </AppText>
-
-                {/* Company */}
-                <View style={styles.dealRow}>
-                    <Icon name="office-building" size={ms(14)} color={Colors.textMuted} />
-                    <AppText size="xs" color={Colors.textSecondary} style={styles.dealRowText} numberOfLines={1}>
-                        {getCompanyName()}
-                    </AppText>
-                </View>
-
-                {/* Value */}
-                <View style={styles.dealRow}>
-                    <Icon name="currency-inr" size={ms(14)} color={Colors.success} />
-                    <AppText size="sm" weight="semiBold" color={Colors.success} style={styles.dealRowText}>
-                        {formatValue()}
-                    </AppText>
-                </View>
-
-                {/* Salesperson */}
-                <View style={styles.dealRow}>
-                    <Icon name="account" size={ms(14)} color={Colors.textMuted} />
-                    <AppText size="xs" color={Colors.textMuted} style={styles.dealRowText} numberOfLines={1}>
-                        {getSalespersonName()}
-                    </AppText>
-                </View>
-            </View>
-        </TouchableOpacity>
-    );
-};
-
-// Stage Tab Component
-const StageTab = ({ stage, isActive, count, onPress }) => (
-    <TouchableOpacity
-        style={[
-            styles.stageTab,
-            { backgroundColor: stage.color },
-            isActive && styles.stageTabActive
-        ]}
-        onPress={onPress}
-        activeOpacity={0.8}
-    >
-        <View style={styles.stageTabContent}>
-            <AppText
-                size="sm"
-                weight={isActive ? 'bold' : 'medium'}
-                color={Colors.white}
-            >
-                {stage.name}
-            </AppText>
-            <View style={[
-                styles.countBadge,
-
-            ]}>
-                <AppText size="xs" weight="bold" color={Colors.white} style={styles.countText}>
-                    {count}
-                </AppText>
-            </View>
-        </View>
-    </TouchableOpacity>
-);
+function getAvatarColor(name) {
+    const palette = ['#4D8733', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return palette[Math.abs(hash) % palette.length];
+}
 
 const PipelineScreen = ({ navigation }) => {
     const nav = useNavigation();
@@ -142,157 +73,80 @@ const PipelineScreen = ({ navigation }) => {
 
     // State
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchOpen, setSearchOpen] = useState(false);
     const [leads, setLeads] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [activeStage, setActiveStage] = useState('all');
+    const [expandedStage, setExpandedStage] = useState(null);
 
-    // Group leads by stage
-    const groupedLeads = useMemo(() => {
-        const groups = { all: leads };
+    // Group leads by stage and calculate stats
+    const { stageData, totalValue, activeValue, convRate, totalLeads } = useMemo(() => {
+        const filteredLeads = searchQuery.trim()
+            ? leads.filter(l =>
+                (l.title || l.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (l.company?.name || l.company || '').toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            : leads;
 
-        // Initialize all stages with empty arrays
-        PIPELINE_STAGES.forEach(stage => {
-            if (stage.id !== 'all') {
-                groups[stage.id] = [];
-            }
+        const totalValue = filteredLeads.reduce((s, l) => s + (l.value || 0), 0);
+        const activeValue = filteredLeads
+            .filter(l => l.status !== 'Closed Lost')
+            .reduce((s, l) => s + (l.value || 0), 0);
+
+        const convWon = filteredLeads.filter(l => l.status === 'Closed Won').length;
+        const convRate = filteredLeads.length > 0 ? Math.round((convWon / filteredLeads.length) * 100) : 0;
+        const totalLeads = filteredLeads.length;
+
+        const stageData = PIPELINE_STAGES.map((stage) => {
+            const stageLeads = filteredLeads.filter(l => {
+                const leadStage = l.status || l.stage?.name || l.stage;
+                return leadStage === stage.id || leadStage === stage.name;
+            });
+            const stageValue = stageLeads.reduce((s, l) => s + (l.value || 0), 0);
+            const percentage = totalLeads > 0 ? Math.round((stageLeads.length / totalLeads) * 100) : 0;
+            return { ...stage, leads: stageLeads, value: stageValue, percentage, count: stageLeads.length };
         });
 
-        // Group leads by their stage name
-        leads.forEach(lead => {
-            const stageName = lead.stage?.name;
-            if (stageName && groups[stageName] !== undefined) {
-                groups[stageName].push(lead);
-            } else if (stageName) {
-                // Handle stages that might have slightly different names
-                const matchingStage = PIPELINE_STAGES.find(
-                    s => s.id.toLowerCase() === stageName.toLowerCase() ||
-                        s.name.toLowerCase() === stageName.toLowerCase()
-                );
-                if (matchingStage && matchingStage.id !== 'all') {
-                    groups[matchingStage.id].push(lead);
-                }
-            }
-        });
-
-        return groups;
-    }, [leads]);
-
-    // Get counts for each stage
-    const stageCounts = useMemo(() => {
-        const counts = {};
-        PIPELINE_STAGES.forEach(stage => {
-            counts[stage.id] = groupedLeads[stage.id]?.length || 0;
-        });
-        return counts;
-    }, [groupedLeads]);
-
-    // Get current stage leads
-    const currentStageLeads = useMemo(() => {
-        return groupedLeads[activeStage] || [];
-    }, [groupedLeads, activeStage]);
-
-    // Get current stage info
-    const currentStage = useMemo(() => {
-        return PIPELINE_STAGES.find(s => s.id === activeStage) || PIPELINE_STAGES[0];
-    }, [activeStage]);
-
-    // Calculate stats for current stage
-    const stageStats = useMemo(() => {
-        const totalValue = currentStageLeads.reduce((sum, lead) => sum + (lead.value || 0), 0);
-        const stage = PIPELINE_STAGES.find(s => s.id === activeStage);
-        const weightedValue = stage?.probability
-            ? Math.round(totalValue * (stage.probability / 100))
-            : totalValue;
-        return { totalValue, weightedValue, count: currentStageLeads.length };
-    }, [currentStageLeads, activeStage]);
-
-    // Format amount
-    const formatAmount = (amount) => {
-        if (amount >= 10000000) {
-            return `₹${(amount / 10000000).toFixed(2)} Cr`;
-        } else if (amount >= 100000) {
-            return `₹${(amount / 100000).toFixed(2)} L`;
-        } else if (amount >= 1000) {
-            return `₹${(amount / 1000).toFixed(1)} K`;
-        }
-        return `₹${amount.toLocaleString('en-IN')}`;
-    };
+        return { stageData, totalValue, activeValue, convRate, totalLeads };
+    }, [leads, searchQuery]);
 
     // Debounced search effect
     useEffect(() => {
-        // Skip on initial mount - let the other useEffect handle it
-        if (isInitialLoadRef.current) {
-            return;
-        }
-
-        // Clear any existing timeout
-        if (searchTimeoutRef.current) {
-            clearTimeout(searchTimeoutRef.current);
-        }
-
-        // Store current search query
+        if (isInitialLoadRef.current) return;
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         currentSearchRef.current = searchQuery;
-
-        // If search query is empty, fetch all leads immediately
         if (!searchQuery.trim()) {
             fetchLeads(false, '');
             return;
         }
-
-        // Debounce the search API call (300ms)
         searchTimeoutRef.current = setTimeout(() => {
             fetchLeads(false, searchQuery.trim());
         }, 300);
-
-        // Cleanup timeout on unmount or query change
         return () => {
-            if (searchTimeoutRef.current) {
-                clearTimeout(searchTimeoutRef.current);
-            }
+            if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         };
     }, [searchQuery]);
 
-    // Fetch leads on mount (initial load only)
+    // Fetch leads on mount
     useEffect(() => {
         fetchLeads(true, '');
         isInitialLoadRef.current = false;
     }, []);
 
-    // Fetch leads from API
     const fetchLeads = async (showLoader = false, search = '') => {
         try {
-            // Only show loading spinner on initial load, not during search
-            if (showLoader) {
-                setLoading(true);
-            }
-
-            // Build params with search
+            if (showLoader) setLoading(true);
             const params = { page: 1, limit: LIMIT };
-            if (search) {
-                params.search = search;
-            }
-
+            if (search) params.search = search;
             const response = await leadsAPI.getAll(params);
-
-            console.log('Pipeline API Response:', response, 'Search:', search);
-
-            // Check if this response is still relevant (search query hasn't changed)
-            if (search !== currentSearchRef.current && search !== '') {
-                console.log('Search query changed, discarding stale response');
-                return;
-            }
-
+            if (search !== currentSearchRef.current && search !== '') return;
             if (response.success) {
                 const leadsData = response.data?.data || response.data?.leads || response.data || [];
-                const newLeads = Array.isArray(leadsData) ? leadsData : [];
-                setLeads(newLeads);
+                setLeads(Array.isArray(leadsData) ? leadsData : []);
             } else {
-                console.error('Failed to fetch leads:', response.error);
                 showError('Error', response.error || 'Failed to load pipeline');
             }
         } catch (error) {
-            console.error('Error fetching leads:', error);
             showError('Error', 'Failed to load pipeline');
         } finally {
             setLoading(false);
@@ -300,182 +154,17 @@ const PipelineScreen = ({ navigation }) => {
         }
     };
 
-    // Pull-to-refresh handler
     const onRefresh = useCallback(() => {
         setRefreshing(true);
         fetchLeads(false, searchQuery.trim());
     }, [searchQuery]);
 
-    // Navigation handlers
-    const handleDealPress = (deal) => {
-        navigation.navigate('LeadDetails', { lead: deal });
-    };
-
-    // Render header
-    const renderHeader = () => (
-        <View style={styles.header}>
-            <View>
-                <AppText size="sm" color={Colors.textSecondary}>
-                    Welcome back,
-                </AppText>
-                <AppText size="xl" weight="bold">
-                    {user?.name || 'User'}
-                </AppText>
-            </View>
-            <View style={styles.headerActions}>
-                <TouchableOpacity style={styles.notificationButton}>
-                    <Icon name="bell-outline" size={ms(24)} color={Colors.textPrimary} />
-                    <View style={styles.notificationBadge}>
-                        <AppText size={8} weight="bold" color={Colors.white}>
-                            3
-                        </AppText>
-                    </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.profileButton}
-                    onPress={() => navigation.navigate('Profile')}
-                >
-                    <Icon name="account-circle" size={ms(24)} color={Colors.textPrimary} />
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-
-    // Search Bar Component
-    const renderSearchBar = () => (
-        <View style={styles.searchContainer}>
-            <Icon name="magnify" size={ms(20)} color={Colors.textMuted} style={styles.searchIcon} />
-            <TextInput
-                style={styles.searchInput}
-                placeholder="Search deals..."
-                placeholderTextColor={Colors.textMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Icon name="close-circle" size={ms(18)} color={Colors.textMuted} />
-                </TouchableOpacity>
-            )}
-        </View>
-    );
-
-    // Render section header with stats
-    const renderSectionHeader = () => (
-        <View style={styles.sectionHeader}>
-            <View>
-                <AppText size="lg" weight="semiBold">
-                    Sales Pipeline
-                </AppText>
-                <AppText size="xs" color={Colors.textMuted}>
-                    {leads.length} total deals • {formatAmount(leads.reduce((sum, l) => sum + (l.value || 0), 0))} value
-                </AppText>
-            </View>
-            <AppButton
-                title="Add Deal"
-                onPress={() => navigation.navigate('AddLead')}
-                fullWidth={false}
-                size="small"
-                icon="plus"
-            />
-        </View>
-    );
-
-    // Render stage tabs
-    const renderStageTabs = () => (
-        <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.tabsContainer}
-            contentContainerStyle={styles.tabsContent}
-        >
-            {PIPELINE_STAGES.map(stage => (
-                <StageTab
-                    key={stage.id}
-                    stage={stage}
-                    isActive={activeStage === stage.id}
-                    count={stageCounts[stage.id]}
-                    onPress={() => setActiveStage(stage.id)}
-                />
-            ))}
-        </ScrollView>
-    );
-
-    // Render stage summary card
-    const renderStageSummary = () => (
-        <View style={[styles.stageSummary, { borderLeftColor: currentStage.color }]}>
-            <View style={styles.stageSummaryHeader}>
-                <AppText size="base" weight="bold" color={currentStage.color}>
-                    {currentStage.name}
-                </AppText>
-                {currentStage.probability && (
-                    <AppText size="xs" color={Colors.textMuted}>
-                        ({currentStage.probability}% probability)
-                    </AppText>
-                )}
-            </View>
-            <View style={styles.stageSummaryStats}>
-                <View style={styles.statItem}>
-                    <AppText size="lg" weight="bold" color={Colors.textPrimary}>
-                        {stageStats.count}
-                    </AppText>
-                    <AppText size="xs" color={Colors.textMuted}>Deals</AppText>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                    <AppText size="lg" weight="bold" color={Colors.success}>
-                        {formatAmount(stageStats.totalValue)}
-                    </AppText>
-                    <AppText size="xs" color={Colors.textMuted}>Total Value</AppText>
-                </View>
-                {currentStage.probability && currentStage.id !== 'all' && (
-                    <>
-                        <View style={styles.statDivider} />
-                        <View style={styles.statItem}>
-                            <AppText size="lg" weight="bold" color={Colors.info}>
-                                {formatAmount(stageStats.weightedValue)}
-                            </AppText>
-                            <AppText size="xs" color={Colors.textMuted}>Weighted</AppText>
-                        </View>
-                    </>
-                )}
-            </View>
-        </View>
-    );
-
-    // Render deal card
-    const renderDealCard = ({ item }) => (
-        <DealCard
-            deal={item}
-        // onPress={() => handleDealPress(item)}
-        />
-    );
-
-    // Render empty state
-    const renderEmpty = () => (
-        <View style={styles.emptyState}>
-            <Icon name="chart-line" size={ms(50)} color={Colors.textMuted} />
-            <AppText size="base" weight="semiBold" color={Colors.textSecondary} style={styles.emptyTitle}>
-                No deals in {currentStage.name}
-            </AppText>
-            <AppText size="sm" color={Colors.textMuted} style={styles.emptySubtitle}>
-                Deals in this stage will appear here
-            </AppText>
-        </View>
-    );
-
-    // Loading state
     if (loading) {
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
-                <View style={styles.headerContainer}>
-                    {renderHeader()}
-                </View>
-                <View style={styles.loadingContainer}>
+                <CommonHeader navigation={navigation} />
+                <View style={styles.centered}>
                     <ActivityIndicator size="large" color={Colors.primary} />
-                    <AppText size="base" color={Colors.textMuted} style={styles.loadingText}>
-                        Loading pipeline...
-                    </AppText>
                 </View>
             </SafeAreaView>
         );
@@ -483,246 +172,335 @@ const PipelineScreen = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.headerContainer}>
-                {renderHeader()}
-                {renderSearchBar()}
-                {renderSectionHeader()}
+            <View style={styles.header}>
+                <Text style={styles.title}>Pipeline</Text>
+                <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                    <TouchableOpacity style={styles.headerIconBtn} onPress={() => setSearchOpen(!searchOpen)}>
+                        <IonIcon name={searchOpen ? 'close' : 'search'} size={20} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.headerIconBtn}>
+                        <IonIcon name="options-outline" size={20} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
-            {/* Stage Tabs */}
-            {renderStageTabs()}
+            {searchOpen ? (
+                <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm }}>
+                    <View style={styles.searchBar}>
+                        <IonIcon name="search" size={17} color={Colors.textTertiary} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search deals..."
+                            placeholderTextColor={Colors.textTertiary}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            autoFocus
+                        />
+                        {searchQuery ? (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <IonIcon name="close-circle" size={17} color={Colors.textTertiary} />
+                            </TouchableOpacity>
+                        ) : null}
+                    </View>
+                </View>
+            ) : null}
 
-            {/* Stage Summary */}
-            <View style={styles.summaryContainer}>
-                {renderStageSummary()}
-            </View>
-
-            {/* Deals List */}
-            <FlatList
-                data={currentStageLeads}
-                keyExtractor={(item) => item._id || item.id}
-                renderItem={renderDealCard}
-                ListEmptyComponent={renderEmpty}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        colors={[Colors.primary]}
-                        tintColor={Colors.primary}
-                    />
-                }
-                contentContainerStyle={styles.listContent}
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
-            />
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+                }
+            >
+                {/* Summary gradient card — matches Expo */}
+                <LinearGradient
+                    colors={['#4D8733', '#6BA344']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.summaryCard}
+                >
+                    <View style={styles.summaryGrid}>
+                        <View style={styles.summaryItem}>
+                            <Text style={styles.summaryValue}>{totalLeads}</Text>
+                            <Text style={styles.summaryLabel}>Total Deals</Text>
+                        </View>
+                        <View style={styles.summaryItem}>
+                            <Text style={styles.summaryValue}>₹{formatValue(totalValue)}</Text>
+                            <Text style={styles.summaryLabel}>Total Value</Text>
+                        </View>
+                        <View style={styles.summaryItem}>
+                            <Text style={styles.summaryValue}>₹{formatValue(activeValue)}</Text>
+                            <Text style={styles.summaryLabel}>Active Value</Text>
+                        </View>
+                        <View style={styles.summaryItem}>
+                            <Text style={styles.summaryValue}>{convRate}%</Text>
+                            <Text style={styles.summaryLabel}>Conversion</Text>
+                        </View>
+                    </View>
+                </LinearGradient>
+
+                {/* Visual funnel bars — matches Expo */}
+                <Text style={styles.sectionLabel}>PIPELINE FUNNEL</Text>
+                <View style={styles.funnelCard}>
+                    {stageData.map((stage, index) => {
+                        const funnelRatio = 1 - (index * 0.1); // Slightly wider funnel
+                        const barWidth = Math.max(stage.percentage, 5) * funnelRatio;
+
+                        return (
+                            <TouchableOpacity
+                                key={stage.id}
+                                style={styles.funnelRow}
+                                activeOpacity={0.7}
+                                onPress={() => setExpandedStage(expandedStage === stage.id ? null : stage.id)}
+                            >
+                                <View style={styles.funnelLeft}>
+                                    <View style={[styles.funnelDot, { backgroundColor: stage.color }]} />
+                                    <Text style={styles.funnelLabel}>{stage.name}</Text>
+                                </View>
+                                <View style={styles.funnelBarWrap}>
+                                    <View
+                                        style={[
+                                            styles.funnelBar,
+                                            {
+                                                width: `${Math.max(barWidth, 8)}%`,
+                                                backgroundColor: stage.color + '30',
+                                            },
+                                        ]}
+                                    >
+                                        <View
+                                            style={[
+                                                styles.funnelBarInner,
+                                                {
+                                                    width: `${Math.min((stage.count / Math.max(totalLeads, 1)) * 100, 100)}%`,
+                                                    backgroundColor: stage.color,
+                                                },
+                                            ]}
+                                        />
+                                    </View>
+                                </View>
+                                <View style={styles.funnelRight}>
+                                    <Text style={[styles.funnelCount, { color: stage.color }]}>{stage.count}</Text>
+                                    <IonIcon
+                                        name={expandedStage === stage.id ? 'chevron-up' : 'chevron-down'}
+                                        size={14}
+                                        color={Colors.textTertiary}
+                                    />
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+
+                {/* Stage cards breakdown — matches Expo */}
+                <Text style={styles.sectionLabel}>STAGE BREAKDOWN</Text>
+                {stageData.map((stage) => {
+                    const isExpanded = expandedStage === stage.id;
+                    return (
+                        <View key={stage.id}>
+                            <TouchableOpacity
+                                style={styles.stageCard}
+                                activeOpacity={0.85}
+                                onPress={() => setExpandedStage(isExpanded ? null : stage.id)}
+                            >
+                                <View style={styles.stageHeader}>
+                                    <View style={[styles.stageIcon, { backgroundColor: stage.bg }]}>
+                                        <IonIcon name={stage.icon} size={ms(18)} color={stage.color} />
+                                    </View>
+                                    <View style={styles.stageInfo}>
+                                        <Text style={styles.stageName}>{stage.name}</Text>
+                                        <Text style={styles.stageCount}>{stage.count} deals</Text>
+                                    </View>
+                                    <View style={styles.stageRight}>
+                                        <Text style={[styles.stageValue, { color: stage.color }]}>
+                                            ₹{formatValue(stage.value)}
+                                        </Text>
+                                        <Text style={styles.stagePercentage}>{stage.percentage}%</Text>
+                                    </View>
+                                    <IonIcon
+                                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                                        size={18}
+                                        color={Colors.textTertiary}
+                                        style={{ marginLeft: 8 }}
+                                    />
+                                </View>
+
+                                {/* Progress bar */}
+                                <View style={styles.progressBarBg}>
+                                    <View
+                                        style={[
+                                            styles.progressBarFill,
+                                            { width: `${Math.max(stage.percentage, 2)}%`, backgroundColor: stage.color },
+                                        ]}
+                                    />
+                                </View>
+                            </TouchableOpacity>
+
+                            {/* Expanded leads cards */}
+                            {isExpanded && stage.leads.length > 0 ? (
+                                <View style={styles.expandedLeads}>
+                                    {stage.leads.map((lead) => {
+                                        const avatarColor = getAvatarColor(lead.title || lead.name || '');
+                                        return (
+                                            <TouchableOpacity
+                                                key={lead._id || lead.id}
+                                                style={styles.leadCard}
+                                                activeOpacity={0.85}
+                                                onPress={() => navigation.navigate('LeadDetails', { lead })}
+                                            >
+                                                <View style={[styles.leadAvatar, { backgroundColor: avatarColor + '18' }]}>
+                                                    <Text style={[styles.leadAvatarText, { color: avatarColor }]}>
+                                                        {getInitials(lead.title || lead.name)}
+                                                    </Text>
+                                                </View>
+                                                <View style={styles.leadInfo}>
+                                                    <Text style={styles.leadName} numberOfLines={1}>{lead.title || lead.name}</Text>
+                                                    {(lead.company?.name || lead.company) ? (
+                                                        <Text style={styles.leadCompany} numberOfLines={1}>{lead.company?.name || lead.company}</Text>
+                                                    ) : null}
+                                                </View>
+                                                {lead.value ? (
+                                                    <Text style={styles.leadValue}>₹{formatValue(lead.value)}</Text>
+                                                ) : null}
+                                                <IonIcon name="chevron-forward" size={16} color={Colors.textTertiary} />
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            ) : null}
+
+                            {isExpanded && stage.leads.length === 0 ? (
+                                <View style={styles.emptyStage}>
+                                    <Text style={styles.emptyStageText}>No deals in this stage</Text>
+                                </View>
+                            ) : null}
+                        </View>
+                    );
+                })}
+
+                {/* Floating Add Button logic placeholder - keep existing logic if needed */}
+                <View style={{ height: ms(100) }} />
+            </ScrollView>
+
+            <View style={styles.floatingAction}>
+                <AppButton
+                    title="Add Deal"
+                    onPress={() => navigation.navigate('AddLead')}
+                    fullWidth={false}
+                    size="small"
+                    icon="add"
+                />
+            </View>
         </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.background,
-    },
-    headerContainer: {
-        paddingHorizontal: wp(4),
-    },
+    container: { flex: 1, backgroundColor: Colors.background },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: vs(16),
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.md,
     },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
+    title: { fontSize: ms(28), fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 },
+    headerIconBtn: {
+        width: ms(40), height: ms(40), borderRadius: ms(14),
+        backgroundColor: Colors.surface, justifyContent: 'center', alignItems: 'center', ...Shadow.sm,
     },
-    notificationButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
+    searchBar: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: Colors.surface, borderRadius: BorderRadius.md,
+        paddingHorizontal: Spacing.md, height: ms(42),
+        borderWidth: 1, borderColor: Colors.surfaceBorder,
     },
-    profileButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
+    searchInput: { flex: 1, marginLeft: Spacing.sm, fontSize: ms(14), color: Colors.textPrimary },
+    scrollContent: { paddingHorizontal: Spacing.lg },
+
+    // Summary Card
+    summaryCard: { borderRadius: BorderRadius.xl, padding: Spacing.lg, marginBottom: Spacing.lg, ...Shadow.md },
+    summaryGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+    summaryItem: { width: '50%', alignItems: 'center', paddingVertical: ms(8) },
+    summaryValue: { fontSize: ms(20), fontWeight: '800', color: '#fff' },
+    summaryLabel: {
+        fontSize: ms(10), fontWeight: '500', color: 'rgba(255,255,255,0.7)',
+        marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5,
     },
-    notificationBadge: {
+
+    sectionLabel: {
+        fontSize: ms(11), fontWeight: '700', color: Colors.textTertiary,
+        letterSpacing: 1, marginTop: Spacing.md, marginBottom: Spacing.sm,
+    },
+
+    // Funnel
+    funnelCard: {
+        backgroundColor: Colors.surface, borderRadius: BorderRadius.xl,
+        padding: ms(14), marginBottom: Spacing.md, ...Shadow.sm,
+    },
+    funnelRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: ms(8) },
+    funnelLeft: { width: ms(90), flexDirection: 'row', alignItems: 'center', gap: 6 },
+    funnelDot: { width: 8, height: 8, borderRadius: 4 },
+    funnelLabel: { fontSize: ms(11), fontWeight: '600', color: Colors.textSecondary },
+    funnelBarWrap: { flex: 1, height: ms(20), justifyContent: 'center' },
+    funnelBar: { height: '100%', borderRadius: ms(6), overflow: 'hidden' },
+    funnelBarInner: { height: '100%', borderRadius: ms(6) },
+    funnelRight: { width: ms(48), flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
+    funnelCount: { fontSize: ms(14), fontWeight: '800' },
+
+    // Stage cards
+    stageCard: {
+        backgroundColor: Colors.surface, borderRadius: BorderRadius.lg,
+        padding: ms(14), marginBottom: Spacing.sm, ...Shadow.sm,
+    },
+    stageHeader: { flexDirection: 'row', alignItems: 'center' },
+    stageIcon: {
+        width: ms(40), height: ms(40), borderRadius: ms(12),
+        justifyContent: 'center', alignItems: 'center',
+    },
+    stageInfo: { flex: 1, marginLeft: Spacing.md },
+    stageName: { fontSize: ms(15), fontWeight: '700', color: Colors.textPrimary },
+    stageCount: { fontSize: ms(11), color: Colors.textTertiary, marginTop: 1 },
+    stageRight: { alignItems: 'flex-end' },
+    stageValue: { fontSize: ms(15), fontWeight: '800' },
+    stagePercentage: { fontSize: ms(10), color: Colors.textTertiary, marginTop: 1 },
+    progressBarBg: {
+        height: ms(4), backgroundColor: Colors.divider,
+        borderRadius: 2, marginTop: Spacing.md, overflow: 'hidden',
+    },
+    progressBarFill: { height: '100%', borderRadius: 2 },
+
+    // Expanded leads
+    expandedLeads: {
+        backgroundColor: Colors.surface, borderRadius: BorderRadius.lg,
+        marginBottom: Spacing.sm, marginTop: -Spacing.sm + 2,
+        borderTopLeftRadius: 0, borderTopRightRadius: 0,
+        overflow: 'hidden', ...Shadow.sm,
+    },
+    leadCard: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: ms(14), paddingVertical: ms(10),
+        borderBottomWidth: 1, borderBottomColor: Colors.divider,
+    },
+    leadAvatar: {
+        width: ms(36), height: ms(36), borderRadius: ms(10),
+        justifyContent: 'center', alignItems: 'center',
+    },
+    leadAvatarText: { fontSize: ms(13), fontWeight: '700' },
+    leadInfo: { flex: 1, marginLeft: Spacing.sm },
+    leadName: { fontSize: ms(14), fontWeight: '600', color: Colors.textPrimary },
+    leadCompany: { fontSize: ms(11), color: Colors.textTertiary, marginTop: 1 },
+    leadValue: { fontSize: ms(13), fontWeight: '700', color: Colors.success, marginRight: 8 },
+    emptyStage: {
+        backgroundColor: Colors.surface, borderRadius: BorderRadius.lg,
+        padding: ms(16), alignItems: 'center',
+        marginBottom: Spacing.sm, marginTop: -Spacing.sm + 2,
+    },
+    emptyStageText: { fontSize: ms(12), color: Colors.textTertiary },
+
+    floatingAction: {
         position: 'absolute',
-        top: ms(8),
-        right: ms(8),
-        width: ms(16),
-        height: ms(16),
-        borderRadius: ms(8),
-        backgroundColor: Colors.error,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.lg,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: vs(10),
-        height: vs(48),
-        marginBottom: vs(16),
-        ...Shadow.sm,
-    },
-    searchIcon: {
-        marginRight: Spacing.sm,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: ms(14),
-        color: Colors.textPrimary,
-        paddingVertical: 0,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: vs(12),
-    },
-
-    // Tabs Styles
-    tabsContainer: {
-        marginVertical: vs(12),
-    },
-    tabsContent: {
-        paddingHorizontal: wp(4),
-        gap: Spacing.sm,
-    },
-    stageTab: {
-        paddingHorizontal: Spacing.md,
-        paddingVertical: vs(10),
-        borderRadius: BorderRadius.lg,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
-    },
-    stageTabActive: {
-        transform: [{ scale: 1.02 }],
+        bottom: vs(20),
+        right: Spacing.lg,
         ...Shadow.md,
-    },
-    stageTabContent: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: Spacing.sm,
-    },
-    countBadge: {
-        minWidth: ms(26),
-        height: ms(26),
-        borderRadius: ms(13),
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: Spacing.xs,
-    },
-    countText: {
-        textAlign: 'center',
-    },
-
-    // Summary Styles
-    summaryContainer: {
-        paddingHorizontal: wp(4),
-        paddingVertical: vs(12),
-    },
-    stageSummary: {
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.lg,
-        padding: Spacing.md,
-        borderLeftWidth: 4,
-        ...Shadow.sm,
-    },
-    stageSummaryHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
-        marginBottom: vs(12),
-    },
-    stageSummaryStats: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    statItem: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    statDivider: {
-        width: 1,
-        height: vs(30),
-        backgroundColor: Colors.border,
-    },
-
-    // List Styles
-    listContent: {
-        paddingHorizontal: wp(4),
-        paddingBottom: vs(100),
-    },
-
-    // Deal Card Styles
-    dealCard: {
-        width: '100%',
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.lg,
-        marginBottom: Spacing.md,
-        overflow: 'hidden',
-        flexDirection: 'row',
-        ...Shadow.sm,
-    },
-    stageIndicator: {
-        width: 4,
-        height: '100%',
-    },
-    dealContent: {
-        flex: 1,
-        padding: Spacing.md,
-    },
-    dealTitle: {
-        marginBottom: vs(8),
-    },
-    dealRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: vs(6),
-    },
-    dealRowText: {
-        marginLeft: Spacing.sm,
-        flex: 1,
-    },
-
-    // Empty & Loading States
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: Spacing.md,
-    },
-    emptyState: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: vs(60),
-        width: SCREEN_WIDTH - wp(8),
-    },
-    emptyTitle: {
-        marginTop: vs(16),
-    },
-    emptySubtitle: {
-        marginTop: vs(8),
-        textAlign: 'center',
-    },
+    }
 });
 
 export default PipelineScreen;

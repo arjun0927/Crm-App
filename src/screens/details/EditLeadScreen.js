@@ -13,7 +13,7 @@ import {
     Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs, wp } from '../../utils/Responsive';
@@ -23,12 +23,12 @@ import { showError, showSuccess } from '../../utils';
 
 // Lead Source Options
 const LEAD_SOURCES = [
-    { id: 'website', label: 'Website', icon: 'web' },
-    { id: 'referral', label: 'Referral', icon: 'account-group' },
-    { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin' },
-    { id: 'event', label: 'Event', icon: 'calendar' },
-    { id: 'ads', label: 'Ads', icon: 'bullhorn' },
-    { id: 'cold_call', label: 'Cold Call', icon: 'phone' },
+    { id: 'website', label: 'Website', icon: 'globe-outline' },
+    { id: 'referral', label: 'Referral', icon: 'people-outline' },
+    { id: 'linkedin', label: 'LinkedIn', icon: 'logo-linkedin' },
+    { id: 'event', label: 'Event', icon: 'calendar-outline' },
+    { id: 'ads', label: 'Ads', icon: 'megaphone-outline' },
+    { id: 'cold_call', label: 'Cold Call', icon: 'call-outline' },
 ];
 
 // Lead Status Options
@@ -181,7 +181,7 @@ const EditLeadScreen = ({ navigation, route }) => {
                     style={styles.backButton}
                     activeOpacity={0.7}
                 >
-                    <Icon name="arrow-left" size={ms(24)} color={Colors.black} />
+                    <Icon name="arrow-back" size={ms(24)} color={Colors.black} />
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
                     <AppText size="lg" weight="bold" numberOfLines={1} color={Colors.black}>
@@ -204,10 +204,10 @@ const EditLeadScreen = ({ navigation, route }) => {
                 >
                     {/* Basic Information Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="information" title="Basic Information" />
+                        <SectionHeader icon="information-circle-outline" title="Basic Information" />
 
                         <InputField
-                            icon="format-title"
+                            icon="text-outline"
                             label="Lead Title *"
                             placeholder="Enter lead title"
                             value={formData.title}
@@ -217,7 +217,7 @@ const EditLeadScreen = ({ navigation, route }) => {
                         />
 
                         <InputField
-                            icon="account"
+                            icon="person-outline"
                             label="Contact Name"
                             placeholder="Enter contact name"
                             value={formData.name}
@@ -226,7 +226,7 @@ const EditLeadScreen = ({ navigation, route }) => {
                         />
 
                         <InputField
-                            icon="domain"
+                            icon="business-outline"
                             label="Company"
                             placeholder="Enter company name"
                             value={formData.company}
@@ -235,7 +235,7 @@ const EditLeadScreen = ({ navigation, route }) => {
                         />
 
                         <InputField
-                            icon="currency-usd"
+                            icon="cash-outline"
                             label="Estimated Value"
                             placeholder="Enter estimated deal value"
                             value={formData.value}
@@ -246,10 +246,10 @@ const EditLeadScreen = ({ navigation, route }) => {
 
                     {/* Contact Information Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="contacts" title="Contact Information" />
+                        <SectionHeader icon="people-circle-outline" title="Contact Information" />
 
                         <InputField
-                            icon="email"
+                            icon="mail-outline"
                             label="Email Address"
                             placeholder="Enter email address"
                             value={formData.email}
@@ -259,7 +259,7 @@ const EditLeadScreen = ({ navigation, route }) => {
                         />
 
                         <InputField
-                            icon="phone"
+                            icon="call-outline"
                             label="Phone Number"
                             placeholder="Enter phone number"
                             value={formData.phone}
@@ -270,7 +270,7 @@ const EditLeadScreen = ({ navigation, route }) => {
 
                     {/* Lead Source Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="source-branch" title="Lead Source" />
+                        <SectionHeader icon="git-branch-outline" title="Lead Source" />
                         <View style={styles.optionsGrid}>
                             {LEAD_SOURCES.map((source) => (
                                 <TouchableOpacity
@@ -302,7 +302,7 @@ const EditLeadScreen = ({ navigation, route }) => {
 
                     {/* Lead Status Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="thermometer" title="Lead Status" />
+                        <SectionHeader icon="thermometer-outline" title="Lead Status" />
                         <View style={styles.statusContainer}>
                             {LEAD_STATUS.map((status) => (
                                 <TouchableOpacity
@@ -328,7 +328,7 @@ const EditLeadScreen = ({ navigation, route }) => {
 
                     {/* Notes Section */}
                     <View style={styles.section}>
-                        <SectionHeader icon="note-text" title="Notes" />
+                        <SectionHeader icon="document-text-outline" title="Notes" />
                         <AppInput
                             placeholder="Add any additional notes..."
                             value={formData.notes}
@@ -349,7 +349,7 @@ const EditLeadScreen = ({ navigation, route }) => {
                         onPress={handleSubmit}
                         loading={loading}
                         disabled={loading || !formData.title.trim()}
-                        icon="content-save"
+                        icon="save-outline"
                         fullWidth
                         style={styles.updateButton}
                     />

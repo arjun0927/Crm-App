@@ -13,7 +13,7 @@ import {
     ActivityIndicator,
     RefreshControl,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs } from '../../utils/Responsive';
@@ -104,14 +104,14 @@ const TaskDetailsScreen = ({ route, navigation }) => {
 
     const getTypeIcon = (type) => {
         const icons = {
-            call: 'phone',
-            email: 'email',
+            call: 'call',
+            email: 'mail',
             meeting: 'calendar',
-            document: 'file-document',
-            review: 'text-box-check',
-            follow_up: 'account-check',
+            document: 'document-text',
+            review: 'checkbox',
+            follow_up: 'person-circle',
         };
-        return icons[type?.toLowerCase()] || 'checkbox-marked-outline';
+        return icons[type?.toLowerCase()] || 'checkmark-done';
     };
 
     const getTypeLabel = (type) => {
@@ -226,7 +226,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
+                        <Icon name="arrow-back" size={ms(24)} color={Colors.textPrimary} />
                     </TouchableOpacity>
                     <AppText size="lg" weight="semiBold">Task Details</AppText>
                     <View style={{ width: ms(44) }} />
@@ -250,7 +250,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
+                        <Icon name="arrow-back" size={ms(24)} color={Colors.textPrimary} />
                     </TouchableOpacity>
                     <AppText size="lg" weight="semiBold">Task Details</AppText>
                     <View style={{ width: ms(44) }} />
@@ -274,7 +274,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
                 style={styles.backButton}
                 onPress={() => navigation.goBack()}
             >
-                <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
+                <Icon name="arrow-back" size={ms(24)} color={Colors.textPrimary} />
             </TouchableOpacity>
             <AppText size="lg" weight="semiBold" numberOfLines={1} style={{ flex: 1, textAlign: 'center' }}>
                 Task Details
@@ -283,7 +283,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
                 style={styles.headerButton}
                 onPress={handleEdit}
             >
-                <Icon name="pencil" size={ms(20)} color={Colors.info} />
+                <Icon name="create-outline" size={ms(20)} color={Colors.info} />
             </TouchableOpacity>
         </View>
     );
@@ -298,7 +298,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             {/* Badges Row */}
             <View style={styles.badgesRow}>
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(currentTask.status) }]}>
-                    <Icon name="clock-outline" size={ms(12)} color={Colors.white} />
+                    <Icon name="time-outline" size={ms(12)} color={Colors.white} />
                     <AppText size="xs" weight="semiBold" color={Colors.white} style={styles.badgeText}>
                         {getStatusName(currentTask.status)}
                     </AppText>
@@ -312,7 +312,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
 
             {/* Due Date */}
             <View style={styles.dueDateRow}>
-                <Icon name="calendar" size={ms(16)} color={Colors.textMuted} />
+                <Icon name="calendar-outline" size={ms(16)} color={Colors.textMuted} />
                 <AppText size="sm" color={Colors.textSecondary} style={{ marginLeft: Spacing.xs }}>
                     Due: {formatDate(currentTask.dueDate)}
                 </AppText>
@@ -323,7 +323,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
     const renderDescriptionSection = () => (
         <View style={styles.section}>
             <View style={styles.sectionHeader}>
-                <Icon name="file-document-outline" size={ms(20)} color={Colors.primary} />
+                <Icon name="document-text-outline" size={ms(20)} color={Colors.primary} />
                 <AppText size="base" weight="semiBold" style={styles.sectionHeaderTitle}>
                     Description
                 </AppText>
@@ -341,7 +341,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
         return (
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Icon name="link-variant" size={ms(20)} color={Colors.primary} />
+                    <Icon name="link-outline" size={ms(20)} color={Colors.primary} />
                     <AppText size="base" weight="semiBold" style={styles.sectionHeaderTitle}>
                         Related To
                     </AppText>
@@ -362,7 +362,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
         return (
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Icon name="message-text-outline" size={ms(20)} color={Colors.primary} />
+                    <Icon name="chatbubble-outline" size={ms(20)} color={Colors.primary} />
                     <AppText size="base" weight="semiBold" style={styles.sectionHeaderTitle}>
                         Activity
                     </AppText>
@@ -411,7 +411,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
     const renderTaskDetailsSection = () => (
         <View style={styles.section}>
             <View style={styles.sectionHeader}>
-                <Icon name="clock-outline" size={ms(20)} color={Colors.primary} />
+                <Icon name="time-outline" size={ms(20)} color={Colors.primary} />
                 <AppText size="base" weight="semiBold" style={styles.sectionHeaderTitle}>
                     Task Details
                 </AppText>
@@ -498,14 +498,14 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             <AppButton
                 title="Edit Task"
                 variant="primary"
-                icon="pencil"
+                icon="create-outline"
                 onPress={handleEdit}
                 style={styles.editButton}
             />
             <AppButton
                 title="Delete"
                 variant="outline"
-                icon="delete"
+                icon="trash-outline"
                 onPress={handleDelete}
                 style={styles.deleteButton}
                 textStyle={{ color: Colors.error }}

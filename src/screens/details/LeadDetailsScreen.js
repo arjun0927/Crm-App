@@ -1,18 +1,19 @@
 /**
  * Lead Details Screen
- * Detailed view of a single lead with actions
+ * Detailed view of a single lead with actions — UI matched to Expo LeadDetailScreen
  */
 
 import React, { useState } from 'react';
 import {
     View,
+    Text,
     StyleSheet,
     TouchableOpacity,
     ScrollView,
     Linking,
     Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import IonIcon from 'react-native-vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
 import { Spacing, BorderRadius, Shadow } from '../../constants/Spacing';
 import { ms, vs } from '../../utils/Responsive';
@@ -20,10 +21,39 @@ import { formatCurrency, formatDate, getInitials, formatPhoneNumber } from '../.
 import { useLeads } from '../../context';
 import { ScreenWrapper, AppText, AppButton } from '../../components';
 
+const STATUS_CONFIG = {
+    New: { color: '#3B82F6', bg: '#EFF6FF', icon: 'sparkles' },
+    Contacted: { color: '#F59E0B', bg: '#FFFBEB', icon: 'chatbubble' },
+    Qualified: { color: '#4D8733', bg: '#EEF5E6', icon: 'checkmark-circle' },
+    Converted: { color: '#10B981', bg: '#ECFDF5', icon: 'trophy' },
+    Lost: { color: '#EF4444', bg: '#FEF2F2', icon: 'close-circle' },
+    hot: { color: '#EF4444', bg: '#FEF2F2', icon: 'flame' },
+    warm: { color: '#F59E0B', bg: '#FFFBEB', icon: 'sunny' },
+    cold: { color: '#3B82F6', bg: '#EFF6FF', icon: 'snow' },
+    qualified: { color: '#4D8733', bg: '#EEF5E6', icon: 'checkmark-circle' },
+};
+
+function getAvatarColor(name) {
+    const palette = ['#4D8733', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444'];
+    let hash = 0;
+    for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return palette[Math.abs(hash) % palette.length];
+}
+
+function InfoRow({ label, value, icon }) {
+    if (!value) return null;
+    return (
+        <View style={styles.infoRow}>
+            <IonIcon name={icon} size={16} color={Colors.textTertiary} />
+            <Text style={styles.infoLabel}>{label}</Text>
+            <Text style={styles.infoValue} numberOfLines={1}>{value}</Text>
+        </View>
+    );
+}
+
 const LeadDetailsScreen = ({ route, navigation }) => {
     const { lead } = route.params || {};
     const { deleteLead, updateLead } = useLeads();
-    const [isFavorite, setIsFavorite] = useState(false);
 
     if (!lead) {
         return (
@@ -35,33 +65,19 @@ const LeadDetailsScreen = ({ route, navigation }) => {
         );
     }
 
-    const getStatusColor = (status) => {
-        const colors = {
-            hot: Colors.leadHot,
-            warm: Colors.leadWarm,
-            cold: Colors.leadCold,
-            qualified: Colors.success,
-        };
-        return colors[status] || Colors.textMuted;
-    };
+    const sc = STATUS_CONFIG[lead.status] || STATUS_CONFIG.New;
+    const avatarColor = getAvatarColor(lead.name);
 
     const handleCall = () => {
-        if (lead.phone) {
-            Linking.openURL(`tel:${lead.phone}`);
-        }
+        if (lead.phone) Linking.openURL(`tel:${lead.phone}`);
     };
 
     const handleEmail = () => {
-        if (lead.email) {
-            Linking.openURL(`mailto:${lead.email}`);
-        }
+        if (lead.email) Linking.openURL(`mailto:${lead.email}`);
     };
 
-    const handleWhatsApp = () => {
-        if (lead.phone) {
-            const phone = lead.phone.replace(/\D/g, '');
-            Linking.openURL(`whatsapp://send?phone=${phone}`);
-        }
+    const handleSMS = () => {
+        if (lead.phone) Linking.openURL(`sms:${lead.phone}`);
     };
 
     const handleDelete = () => {
@@ -86,211 +102,112 @@ const LeadDetailsScreen = ({ route, navigation }) => {
         );
     };
 
-    const renderHeader = () => (
-        <View style={styles.header}>
-            <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => navigation.goBack()}
-            >
-                <Icon name="arrow-left" size={ms(24)} color={Colors.textPrimary} />
-            </TouchableOpacity>
-            <View style={styles.headerActions}>
-                <TouchableOpacity
-                    style={styles.headerButton}
-                    onPress={() => setIsFavorite(!isFavorite)}
-                >
-                    <Icon
-                        name={isFavorite ? 'heart' : 'heart-outline'}
-                        size={ms(22)}
-                        color={isFavorite ? Colors.error : Colors.textPrimary}
-                    />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.headerButton}
-                    onPress={() => { }}
-                >
-                    <Icon name="dots-vertical" size={ms(22)} color={Colors.textPrimary} />
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-
-    const renderProfile = () => (
-        <View style={styles.profileCard}>
-            <View style={styles.avatarContainer}>
-                <View style={styles.avatar}>
-                    <AppText size="xxl" weight="bold" color={Colors.primary}>
-                        {getInitials(lead.name)}
-                    </AppText>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(lead.status) }]}>
-                    <AppText size="xs" weight="bold" color={Colors.white}>
-                        {lead.status?.toUpperCase()}
-                    </AppText>
-                </View>
-            </View>
-
-            <AppText size="xl" weight="bold" style={styles.name}>
-                {lead.name}
-            </AppText>
-            <AppText size="base" color={Colors.textSecondary}>
-                {lead.company}
-            </AppText>
-
-            <View style={styles.valueContainer}>
-                <AppText size="xxl" weight="bold" color={Colors.success}>
-                    {formatCurrency(lead.value || 0)}
-                </AppText>
-                <AppText size="sm" color={Colors.textMuted}>
-                    Estimated Value
-                </AppText>
-            </View>
-
-            {/* Quick Actions */}
-            <View style={styles.quickActions}>
-                <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
-                    <View style={[styles.actionIcon, { backgroundColor: Colors.successLight }]}>
-                        <Icon name="phone" size={ms(20)} color={Colors.success} />
-                    </View>
-                    <AppText size="xs" color={Colors.textSecondary}>
-                        Call
-                    </AppText>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.actionButton} onPress={handleEmail}>
-                    <View style={[styles.actionIcon, { backgroundColor: Colors.infoLight }]}>
-                        <Icon name="email" size={ms(20)} color={Colors.info} />
-                    </View>
-                    <AppText size="xs" color={Colors.textSecondary}>
-                        Email
-                    </AppText>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.actionButton} onPress={handleWhatsApp}>
-                    <View style={[styles.actionIcon, { backgroundColor: '#DCF8C6' }]}>
-                        <Icon name="whatsapp" size={ms(20)} color="#25D366" />
-                    </View>
-                    <AppText size="xs" color={Colors.textSecondary}>
-                        WhatsApp
-                    </AppText>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.actionButton} onPress={() => { }}>
-                    <View style={[styles.actionIcon, { backgroundColor: Colors.primaryBackground }]}>
-                        <Icon name="calendar-plus" size={ms(20)} color={Colors.primary} />
-                    </View>
-                    <AppText size="xs" color={Colors.textSecondary}>
-                        Schedule
-                    </AppText>
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-
-    const renderInfoSection = () => (
-        <View style={styles.section}>
-            <AppText size="lg" weight="semiBold" style={styles.sectionTitle}>
-                Contact Information
-            </AppText>
-            <View style={styles.infoCard}>
-                <View style={styles.infoRow}>
-                    <Icon name="email-outline" size={ms(20)} color={Colors.textMuted} />
-                    <View style={styles.infoContent}>
-                        <AppText size="xs" color={Colors.textMuted}>
-                            Email
-                        </AppText>
-                        <AppText size="base" weight="medium">
-                            {lead.email || 'Not provided'}
-                        </AppText>
-                    </View>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.infoRow}>
-                    <Icon name="phone-outline" size={ms(20)} color={Colors.textMuted} />
-                    <View style={styles.infoContent}>
-                        <AppText size="xs" color={Colors.textMuted}>
-                            Phone
-                        </AppText>
-                        <AppText size="base" weight="medium">
-                            {lead.phone ? formatPhoneNumber(lead.phone) : 'Not provided'}
-                        </AppText>
-                    </View>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.infoRow}>
-                    <Icon name="domain" size={ms(20)} color={Colors.textMuted} />
-                    <View style={styles.infoContent}>
-                        <AppText size="xs" color={Colors.textMuted}>
-                            Company
-                        </AppText>
-                        <AppText size="base" weight="medium">
-                            {lead.company || 'Not provided'}
-                        </AppText>
-                    </View>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.infoRow}>
-                    <Icon name="tag-outline" size={ms(20)} color={Colors.textMuted} />
-                    <View style={styles.infoContent}>
-                        <AppText size="xs" color={Colors.textMuted}>
-                            Source
-                        </AppText>
-                        <AppText size="base" weight="medium">
-                            {lead.source || 'Unknown'}
-                        </AppText>
-                    </View>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.infoRow}>
-                    <Icon name="calendar-outline" size={ms(20)} color={Colors.textMuted} />
-                    <View style={styles.infoContent}>
-                        <AppText size="xs" color={Colors.textMuted}>
-                            Created
-                        </AppText>
-                        <AppText size="base" weight="medium">
-                            {lead.createdAt ? formatDate(lead.createdAt, 'long') : 'Unknown'}
-                        </AppText>
-                    </View>
-                </View>
-            </View>
-        </View>
-    );
-
-    const renderActions = () => (
-        <View style={styles.actionsContainer}>
-            <AppButton
-                title="Edit Lead"
-                variant="primary"
-                icon="pencil"
-                onPress={() => { }}
-                style={styles.editButton}
-            />
-            <AppButton
-                title="Delete"
-                variant="outline"
-                icon="delete"
-                onPress={handleDelete}
-                style={styles.deleteButton}
-                textStyle={{ color: Colors.error }}
-            />
-        </View>
-    );
-
     return (
         <ScreenWrapper withPadding backgroundColor={Colors.background}>
             <ScrollView showsVerticalScrollIndicator={false}>
-                {renderHeader()}
-                {renderProfile()}
-                {renderInfoSection()}
-                {renderActions()}
+                {/* Header — Expo style */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <IonIcon name="arrow-back" size={ms(22)} color={Colors.textPrimary} />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Lead Details</Text>
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('EditLead', { lead })}
+                        style={styles.editBtn}
+                    >
+                        <IonIcon name="create-outline" size={ms(18)} color={Colors.primary} />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Profile card — matching Expo */}
+                <View style={styles.profileCard}>
+                    <View style={[styles.avatar, { backgroundColor: avatarColor + '18' }]}>
+                        <Text style={[styles.avatarText, { color: avatarColor }]}>{getInitials(lead.name)}</Text>
+                    </View>
+                    <Text style={styles.leadName}>{lead.name}</Text>
+                    {lead.company ? (
+                        <Text style={styles.companyName}>{lead.company}</Text>
+                    ) : null}
+                    <View style={styles.badgeRow}>
+                        <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
+                            <IonIcon name={sc.icon} size={13} color={sc.color} />
+                            <Text style={[styles.badgeText, { color: sc.color }]}>
+                                {lead.status?.charAt(0).toUpperCase() + lead.status?.slice(1)}
+                            </Text>
+                        </View>
+                        {lead.source ? (
+                            <View style={styles.sourceBadge}>
+                                <Text style={styles.sourceBadgeText}>{lead.source}</Text>
+                            </View>
+                        ) : null}
+                    </View>
+
+                    {/* Quick actions — Expo style */}
+                    <View style={styles.quickActions}>
+                        {lead.phone ? (
+                            <TouchableOpacity style={styles.actionBtn} onPress={handleCall}>
+                                <IonIcon name="call" size={20} color={Colors.primary} />
+                                <Text style={styles.actionLabel}>Call</Text>
+                            </TouchableOpacity>
+                        ) : null}
+                        {lead.email ? (
+                            <TouchableOpacity style={styles.actionBtn} onPress={handleEmail}>
+                                <IonIcon name="mail" size={20} color="#3B82F6" />
+                                <Text style={styles.actionLabel}>Email</Text>
+                            </TouchableOpacity>
+                        ) : null}
+                        {lead.phone ? (
+                            <TouchableOpacity style={styles.actionBtn} onPress={handleSMS}>
+                                <IonIcon name="chatbubble" size={20} color="#8B5CF6" />
+                                <Text style={styles.actionLabel}>SMS</Text>
+                            </TouchableOpacity>
+                        ) : null}
+                    </View>
+                </View>
+
+                {/* Contact Information — Expo info rows */}
+                <View style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>CONTACT INFORMATION</Text>
+                    <InfoRow icon="mail-outline" label="Email" value={lead.email} />
+                    <InfoRow icon="call-outline" label="Phone" value={lead.phone ? formatPhoneNumber(lead.phone) : undefined} />
+                    <InfoRow icon="business-outline" label="Company" value={lead.company} />
+                </View>
+
+                {/* Deal Information — Expo info rows */}
+                <View style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>DEAL INFORMATION</Text>
+                    <InfoRow icon="wallet-outline" label="Value" value={lead.value || lead.estimatedValue ? formatCurrency(lead.value || lead.estimatedValue || 0) : undefined} />
+                    <InfoRow icon="globe-outline" label="Source" value={lead.source} />
+                    <InfoRow icon="person-circle-outline" label="Salesperson" value={lead.salesperson} />
+                </View>
+
+                {/* Notes */}
+                {lead.notes ? (
+                    <View style={styles.sectionCard}>
+                        <Text style={styles.sectionTitle}>NOTES</Text>
+                        <Text style={styles.notesText}>{lead.notes}</Text>
+                    </View>
+                ) : null}
+
+                {/* Actions */}
+                <View style={styles.actionsContainer}>
+                    <AppButton
+                        title="Edit Lead"
+                        variant="primary"
+                        icon="create-outline"
+                        onPress={() => navigation.navigate('EditLead', { lead })}
+                        style={styles.editButton}
+                    />
+                    <AppButton
+                        title="Delete"
+                        variant="outline"
+                        icon="trash-outline"
+                        onPress={handleDelete}
+                        style={styles.deleteButton}
+                        textStyle={{ color: Colors.error }}
+                    />
+                </View>
+
                 <View style={styles.bottomSpacer} />
             </ScrollView>
         </ScreenWrapper>
@@ -298,123 +215,164 @@ const LeadDetailsScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
+    // Header — matching Expo
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        justifyContent: 'space-between',
         marginBottom: vs(16),
     },
-    backButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
+    backBtn: {
+        width: ms(40),
+        height: ms(40),
+        borderRadius: ms(14),
+        backgroundColor: Colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
         ...Shadow.sm,
     },
-    headerActions: {
-        flexDirection: 'row',
-        gap: Spacing.sm,
+    headerTitle: {
+        fontSize: ms(18),
+        fontWeight: '700',
+        color: Colors.textPrimary,
     },
-    headerButton: {
-        width: ms(44),
-        height: ms(44),
-        borderRadius: BorderRadius.round,
-        backgroundColor: Colors.white,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...Shadow.sm,
-    },
-    profileCard: {
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.card,
-        padding: Spacing.lg,
-        alignItems: 'center',
-        marginBottom: vs(24),
-        ...Shadow.md,
-    },
-    avatarContainer: {
-        position: 'relative',
-        marginBottom: Spacing.md,
-    },
-    avatar: {
-        width: ms(90),
-        height: ms(90),
-        borderRadius: BorderRadius.round,
+    editBtn: {
+        width: ms(40),
+        height: ms(40),
+        borderRadius: ms(14),
         backgroundColor: Colors.primaryBackground,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    statusBadge: {
-        position: 'absolute',
-        bottom: 0,
-        right: -5,
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 4,
-        borderRadius: BorderRadius.round,
-        borderWidth: 2,
-        borderColor: Colors.white,
-    },
-    name: {
-        marginBottom: 4,
-    },
-    valueContainer: {
+
+    // Profile card — matching Expo
+    profileCard: {
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.xl,
+        padding: ms(20),
         alignItems: 'center',
-        marginTop: vs(16),
-        paddingTop: vs(16),
-        borderTopWidth: 1,
-        borderTopColor: Colors.border,
-        width: '100%',
+        ...Shadow.sm,
     },
-    quickActions: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        width: '100%',
-        marginTop: vs(20),
-        paddingTop: vs(20),
-        borderTopWidth: 1,
-        borderTopColor: Colors.border,
-    },
-    actionButton: {
-        alignItems: 'center',
-    },
-    actionIcon: {
-        width: ms(48),
-        height: ms(48),
-        borderRadius: BorderRadius.round,
+    avatar: {
+        width: ms(72),
+        height: ms(72),
+        borderRadius: ms(36),
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: Spacing.xs,
-    },
-    section: {
-        marginBottom: vs(24),
-    },
-    sectionTitle: {
         marginBottom: Spacing.md,
     },
-    infoCard: {
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.card,
-        padding: Spacing.md,
+    avatarText: {
+        fontSize: ms(28),
+        fontWeight: '800',
+    },
+    leadName: {
+        fontSize: ms(22),
+        fontWeight: '800',
+        color: Colors.textPrimary,
+        textAlign: 'center',
+    },
+    companyName: {
+        fontSize: ms(14),
+        color: Colors.textSecondary,
+        marginTop: 4,
+    },
+    badgeRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: Spacing.md,
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 10,
+        gap: 4,
+    },
+    badgeText: {
+        fontSize: ms(12),
+        fontWeight: '600',
+    },
+    sourceBadge: {
+        backgroundColor: Colors.background,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 10,
+    },
+    sourceBadgeText: {
+        fontSize: ms(12),
+        fontWeight: '600',
+        color: Colors.textSecondary,
+    },
+
+    // Quick actions — matching Expo
+    quickActions: {
+        flexDirection: 'row',
+        gap: Spacing.xl,
+        marginTop: Spacing.lg,
+        paddingTop: Spacing.lg,
+        borderTopWidth: 1,
+        borderTopColor: Colors.divider,
+        width: '100%',
+        justifyContent: 'center',
+    },
+    actionBtn: {
+        alignItems: 'center',
+        gap: 4,
+    },
+    actionLabel: {
+        fontSize: ms(11),
+        fontWeight: '600',
+        color: Colors.textSecondary,
+    },
+
+    // Section Card — matching Expo
+    sectionCard: {
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.xl,
+        padding: ms(16),
+        marginTop: Spacing.md,
         ...Shadow.sm,
+    },
+    sectionTitle: {
+        fontSize: ms(14),
+        fontWeight: '700',
+        color: Colors.textPrimary,
+        marginBottom: Spacing.md,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: Spacing.sm,
+        paddingVertical: ms(10),
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.divider,
+        gap: 8,
     },
-    infoContent: {
-        marginLeft: Spacing.md,
+    infoLabel: {
+        fontSize: ms(13),
+        color: Colors.textTertiary,
+        width: ms(90),
+    },
+    infoValue: {
         flex: 1,
+        fontSize: ms(14),
+        fontWeight: '600',
+        color: Colors.textPrimary,
+        textAlign: 'right',
     },
-    divider: {
-        height: 1,
-        backgroundColor: Colors.borderLight,
+    notesText: {
+        fontSize: ms(14),
+        color: Colors.textSecondary,
+        lineHeight: ms(22),
     },
+
+    // Actions
     actionsContainer: {
         flexDirection: 'row',
         gap: Spacing.md,
+        marginTop: Spacing.lg,
     },
     editButton: {
         flex: 2,
